@@ -8,3 +8,7 @@
 // @use 'vuetify/settings' with (
 //   $color-pack: false
 // );
+
+.v-navigation-drawer__scrim {
+  z-index: 1019 !important;
+}
