@@ -5,16 +5,8 @@
  */
 
 // Composables
-import Inicial from '@/pages/Inicial.vue'
 import { createRouter, createWebHistory } from 'vue-router/auto'
-
-const routes=[
-  {
-    path: '/',
-    name: 'Inicial',
-    component: Inicial
-  }
-]
+import { routes } from 'vue-router/auto-routes'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
