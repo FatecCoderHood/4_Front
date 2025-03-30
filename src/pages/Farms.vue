@@ -10,14 +10,13 @@
   <v-container>
     <v-row class="mb-6">
       <v-col cols="12">
-        <h1 class="text-h4 font-weight-bold">CODERHOOD</h1>
-        <h2 class="text-h5">CADASTRO DE ÁREAS</h2>
+        <h2 class="text-h5">CADASTRO DE FAZENDAS</h2>
       </v-col>
     </v-row>
 
     <v-card class="mb-6">
       <v-card-title class="d-flex justify-space-between align-center">
-        <span class="text-h6">ÁREAS</span>
+        <span class="text-h6">FAZENDA</span>
         <v-btn color="primary" @click="openModal">
           <v-icon left>mdi-plus</v-icon>
           Adicionar

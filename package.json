@@ -17,6 +17,7 @@
     "axios": "^1.8.4",
     "core-js": "^3.37.1",
     "leaflet": "^1.9.4",
+    "leaflet-draw": "^1.0.4",
     "roboto-fontface": "*",
     "vue": "^3.4.31",
     "vuetify": "^3.6.14"

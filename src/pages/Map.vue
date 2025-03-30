@@ -15,7 +15,7 @@
       <p v-if="!loading && !errorMessage && farms.length === 0">Nenhuma fazenda cadastrada.</p>
       <ul v-if="!loading && !errorMessage && farms.length > 0">
         <li v-for="farm in farms" :key="farm.id">
-          <button @click="showFarmgeojson(farm)">
+          <button @click="selectFarm(farm)">
             <strong>{{ farm.nome }}</strong><br>
             <small>{{ farm.localizacao }} • {{ farm.cultura }}</small>
           </button>
@@ -24,6 +24,13 @@
     </div>
 
     <div id="map"></div>
+    
+    <div v-if="selectedFarm && isDrawingMode" class="drawing-control-panel">
+      <h4>Editando: {{ selectedFarm.nome }}</h4>
+      <button @click="saveDrawing" class="save-btn">Salvar Polígono</button>
+      <button @click="cancelDrawing" class="cancel-btn">Cancelar</button>
+      <p class="hint">Desenhe o polígono da fazenda no mapa</p>
+    </div>
   </div>
 </template>
 
@@ -31,6 +38,8 @@
 import { defineComponent } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-draw/dist/leaflet.draw.css';
+import 'leaflet-draw/dist/leaflet.draw';
 
 export default defineComponent({
   data() {
@@ -42,6 +51,10 @@ export default defineComponent({
       loading: false,
       errorMessage: '',
       zoomControl: null as L.Control.Zoom | null,
+      drawControl: null as L.Control.Draw | null,
+      drawnItems: null as L.FeatureGroup | null,
+      isDrawingMode: false,
+      selectedFarm: null as any | null,
     };
   },
   mounted() {
@@ -62,6 +75,25 @@ export default defineComponent({
         return button;
       };
       farmListButton.addTo(this.map);
+
+      const drawButton = L.control({ position: 'topleft' });
+      drawButton.onAdd = () => {
+        const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control draw-btn');
+        button.innerHTML = '✏️';
+        button.title = 'Desenhar Polígono';
+        button.onclick = () => {
+          if (!this.selectedFarm) {
+            alert('Selecione uma fazenda primeiro');
+            return;
+          }
+          this.toggleDrawingMode();
+        };
+        return button;
+      };
+      drawButton.addTo(this.map);
+
+      this.drawnItems = new L.FeatureGroup();
+      this.map.addLayer(this.drawnItems);
     },
 
     async fetchFarms() {
@@ -118,63 +150,187 @@ export default defineComponent({
       }
     },
 
+    selectFarm(farm: any) {
+      this.selectedFarm = farm;
+      this.showFarmgeojson(farm);
+    },
+
     showFarmgeojson(farm: { nome: string; parsedGeojson: any; cultura: string; produtividade: string | number }) {
-      console.log('Exibindo fazenda:', farm); // Para debug
+      console.log('Exibindo fazenda:', farm);
       if (!this.map) return;
-      if (!farm.parsedGeojson) {
-        alert('Esta fazenda não possui geometria válida.');
-        return;
+      
+      if (this.drawnItems) {
+        this.drawnItems.clearLayers();
       }
-
-      try {
-        if (this.geojsonLayer) {
-          this.map.removeLayer(this.geojsonLayer);
-        }
-
-        this.geojsonLayer = L.geoJSON(farm.parsedGeojson, {
-          style: {
-            color: '#3388ff',
-            weight: 3,
-            opacity: 0.7,
-            fillOpacity: 0.2,
-            fillColor: '#3388ff'
-          },
-          onEachFeature: (feature, layer) => {
-            const popupContent = `
-              <div class="farm-popup">
-                <h4>${farm.nome}</h4>
-                <p><strong>Cultura:</strong> ${farm.cultura}</p>
-                <p><strong>Produtividade:</strong> ${farm.produtividade}</p>
-              </div>
-            `;
-            layer.bindPopup(popupContent);
+      
+      if (farm.parsedGeojson) {
+        try {
+          if (this.geojsonLayer) {
+            this.map.removeLayer(this.geojsonLayer);
           }
-        }).addTo(this.map);
 
-        this.map.fitBounds(this.geojsonLayer.getBounds());
-      } catch (error) {
-        console.error('Erro ao exibir fazenda:', error);
-        alert('Erro ao exibir a geometria da fazenda');
+          this.geojsonLayer = L.geoJSON(farm.parsedGeojson, {
+            style: {
+              color: '#3388ff',
+              weight: 3,
+              opacity: 0.7,
+              fillOpacity: 0.2,
+              fillColor: '#3388ff'
+            },
+            onEachFeature: (feature, layer) => {
+              const popupContent = `
+                <div class="farm-popup">
+                  <h4>${farm.nome}</h4>
+                  <p><strong>Cultura:</strong> ${farm.cultura}</p>
+                  <p><strong>Produtividade:</strong> ${farm.produtividade} <strong>sacas/ha:</strong></p>
+                </div>
+              `;
+              layer.bindPopup(popupContent);
+            }
+          }).addTo(this.map);
+
+          this.map.fitBounds(this.geojsonLayer.getBounds());
+        } catch (error) {
+          console.error('Erro ao exibir fazenda:', error);
+          alert('Erro ao exibir a geometria da fazenda');
+        }
       }
     },
 
     toggleFarmList() {
       this.isListVisible = !this.isListVisible;
     },
+
+    toggleDrawingMode() {
+      if (!this.map || !this.selectedFarm) return;
+      
+      this.isDrawingMode = !this.isDrawingMode;
+      
+      if (this.isDrawingMode) {
+
+        if (this.drawnItems) {
+          this.drawnItems.clearLayers();
+        }
+
+        if (this.geojsonLayer) {
+          this.map.removeLayer(this.geojsonLayer);
+          this.geojsonLayer = null;
+        }
+        
+        this.drawControl = new L.Control.Draw({
+          position: 'topright',
+          draw: {
+            polygon: {
+              allowIntersection: false,
+              showArea: false, 
+              metric: true,
+              shapeOptions: {
+                color: '#ff7800',
+                fillColor: '#ff7800',
+                fillOpacity: 0.2
+              }
+            },
+            polyline: false,
+            rectangle: false,
+            circle: false,
+            marker: false,
+            circlemarker: false
+          },
+          edit: {
+            featureGroup: this.drawnItems
+          }
+        });
+        
+        this.map.addControl(this.drawControl);
+        this.map.on(L.Draw.Event.CREATED, (e: any) => {
+          if (this.drawnItems) {
+            const layer = (e as L.DrawEvents.Created).layer;
+            this.drawnItems.addLayer(layer);
+
+            layer.bindPopup('Polígono desenhado. Clique em "Salvar" para confirmar.');
+            layer.openPopup();
+          }
+        });
+      } else {
+        if (this.drawControl) {
+          this.map.removeControl(this.drawControl);
+          this.drawControl = null;
+        }
+
+        this.map.off(L.Draw.Event.CREATED);
+
+        if (this.drawnItems) {
+          this.drawnItems.clearLayers();
+        }
+        if (this.selectedFarm?.parsedGeojson) {
+          this.showFarmgeojson(this.selectedFarm);
+        }
+      }
+    },
+    
+    cancelDrawing() {
+      this.isDrawingMode = false;
+      this.toggleDrawingMode(); 
+    },
+    
+    async saveDrawing() {
+      if (!this.drawnItems || !this.selectedFarm) {
+        alert('Nenhum polígono desenhado ou fazenda selecionada!');
+        return;
+      }
+      
+      const geoJSON = this.drawnItems.toGeoJSON();
+      if (geoJSON.features.length === 0) {
+        alert('Nenhum polígono desenhado!');
+        return;
+      }
+      
+      try {
+        const payload = {
+          geojson: JSON.stringify(geoJSON.features[0].geometry) 
+        };
+
+        const response = await fetch(`http://localhost:8080/areas/${this.selectedFarm.id}/geojson`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Erro ${response.status}`);
+        }
+        
+        alert('Geometria salva com sucesso!');
+        this.isDrawingMode = false;
+        this.toggleDrawingMode();
+
+        this.selectedFarm.parsedGeojson = geoJSON.features[0].geometry;
+        this.showFarmgeojson(this.selectedFarm);
+        
+        await this.fetchFarms();
+      } catch (error) {
+        console.error('Erro ao salvar geometria:', error);
+        alert(`Erro ao salvar a geometria: ${error.message}`);
+      }
+    }
   },
 });
 </script>
 
 <style>
-.farm-btn {
+.farm-btn, .draw-btn {
   background: white;
   border: none;
   padding: 6px;
   font-size: 18px;
   cursor: pointer;
+  margin-bottom: 5px;
 }
 
-.farm-btn:hover {
+.farm-btn:hover, .draw-btn:hover {
   background: #ddd;
 }
 
@@ -252,7 +408,8 @@ export default defineComponent({
   transform: translateX(250px);
 }
 
-.farm-sidebar.open~#map .leaflet-top.leaflet-left .farm-btn {
+.farm-sidebar.open~#map .leaflet-top.leaflet-left .farm-btn,
+.farm-sidebar.open~#map .leaflet-top.leaflet-left .draw-btn {
   transform: translateX(250px);
 }
 
@@ -279,4 +436,52 @@ export default defineComponent({
 .farm-popup strong {
   color: #555;
 }
+
+.drawing-control-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 15px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  text-align: center;
+}
+
+.drawing-control-panel h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.drawing-control-panel button {
+  padding: 8px 15px;
+  margin: 0 5px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.drawing-control-panel .save-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.drawing-control-panel .cancel-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.drawing-control-panel .hint {
+  margin: 10px 0 0 0;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.leaflet-draw-toolbar a {
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNTAgMTBjLTIyIDAtNDAgMTgtNDAgNDBzMTggNDAgNDAgNDAgNDAtMTggNDAtNDAtMTgtNDAtNDAtNDB6Ii8+PC9zdmc+') !important;
+}
+
 </style>
