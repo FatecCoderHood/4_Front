@@ -6,7 +6,7 @@
         <v-img src="@/assets/logo-coderhood.png" height="50" width="50" />
       </router-link>
       <div class="d-flex flex-column">
-        <p class="title text-uppercase">Coderhood</p>
+        <p class="title text-uppercase">GeoHood</p>
         <p class="sub-title text-lowercase">Tecnologia Agrícola</p>
       </div>
     </div>
@@ -72,3 +72,4 @@ const logout = () => {
   font-size: 16px
   opacity: 0.44
 </style>
+
