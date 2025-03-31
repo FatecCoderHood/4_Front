@@ -16,7 +16,7 @@
 
     <v-card class="mb-6">
       <v-card-title class="d-flex justify-space-between align-center">
-        <span class="text-h6">FAZENDA</span>
+        <span class="text-h6"></span>
         <v-btn color="primary" @click="openModal">
           <v-icon left>mdi-plus</v-icon>
           Adicionar
@@ -152,12 +152,13 @@ export default defineComponent({
         'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO', 'NO', 'MO'
       ],
       headers: [
-        { text: 'NOME DA FAZENDA', value: 'nome', align: 'start', sortable: true },
-        { text: 'CULTURA', value: 'cultura', align: 'start', sortable: true },
-        { text: 'LOCALIZAÇÃO', value: 'localizacao', align: 'start', sortable: true },
-        { text: 'PRODUTIVIDADE (sacas/ha)', value: 'produtividade', align: 'start', sortable: true },
-        { text: 'AÇÕES', value: 'actions', align: 'end', sortable: false }
+        { title: 'NOME DA FAZENDA', value: 'nome', align: 'center', sortable: true },
+        { title: 'CULTURA', value: 'cultura', align: 'center', sortable: true },
+        { title: 'LOCALIZAÇÃO', value: 'localizacao', align: 'center', sortable: true },
+        { title: 'PRODUTIVIDADE (sacas/ha)', value: 'produtividade', align: 'center', sortable: true },
+        { title: 'AÇÕES', value: 'actions', align: 'end', sortable: false }
       ],
+
       isSubmitting: false,
       showSnackbar: false,
       snackbarMessage: '',
@@ -420,5 +421,25 @@ export default defineComponent({
 
 .v-data-table tbody tr:hover {
   background-color: rgba(0, 0, 0, 0.04);
+}
+
+.v-data-table {
+  background-color: #f5f5f5;
+}
+
+.v-container {
+  background-color: white;
+}
+
+.v-data-table :deep(.v-data-table__td),
+.v-data-table :deep(.v-data-table-header__content) {
+  color: black !important;
+}
+
+.v-text-field input,
+.v-select .v-select__selection-text,
+.v-card-title,
+.v-card-text {
+  color: black !important;
 }
 </style>
