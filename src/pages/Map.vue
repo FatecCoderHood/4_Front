@@ -56,6 +56,30 @@ export default defineComponent({
       isDrawingMode: false,
       selectedFarm: null as any | null,
       editableLayer: null as L.Layer | null,
+      mapProviders: {
+        osm: {
+          name: 'OpenStreetMap',
+          layer: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+          })
+        },
+        satellite: {
+          name: 'Satélite',
+          layer: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Esri WorldImagery',
+            maxZoom: 19
+          })
+        },
+        terrain: {
+          name: 'Terreno',
+          layer: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'OpenTopoMap',
+            maxZoom: 17
+          })
+        }
+      },
+      currentMapProvider: 'osm'
     };
   },
   mounted() {
@@ -65,7 +89,16 @@ export default defineComponent({
   methods: {
     initMap() {
       this.map = L.map('map').setView([-15.7801, -47.9292], 5);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+      
+      this.mapProviders[this.currentMapProvider].layer.addTo(this.map);
+
+      const baseLayers = {
+        "OpenStreetMap": this.mapProviders.osm.layer,
+        "Satélite": this.mapProviders.satellite.layer,
+        "Terreno": this.mapProviders.terrain.layer
+      };
+      
+      L.control.layers(baseLayers, null, { position: 'topright' }).addTo(this.map);
 
       const farmListButton = L.control({ position: 'topleft' });
       farmListButton.onAdd = () => {
@@ -240,7 +273,7 @@ export default defineComponent({
             fillColor: '#ff7800'
           }
         });
-        
+
         this.editableLayer.eachLayer((layer: L.Layer) => {
           this.drawnItems?.addLayer(layer);
           layer.bindPopup('Arraste os pontos para editar').openPopup();
@@ -248,7 +281,7 @@ export default defineComponent({
         
         this.map.fitBounds(this.editableLayer.getBounds());
       }
-      
+ 
       this.drawControl = new L.Control.Draw({
         position: 'topright',
         draw: {
@@ -320,13 +353,13 @@ export default defineComponent({
         const geoJSON = (this.editableLayer as any).toGeoJSON();
         
         let geometryToSave = geoJSON;
-        if (geoJSON.type === 'FeatureCollection' && geoJSON.features && geoJSON.features.length > 0) {
+        if (geoJSON.type === 'FeatureCollection' && geoJSON.features?.length > 0) {
           geometryToSave = geoJSON.features[0].geometry;
         } else if (geoJSON.type === 'Feature') {
           geometryToSave = geoJSON.geometry;
         }
 
-        if (!geometryToSave || !geometryToSave.coordinates || geometryToSave.coordinates.length === 0) {
+        if (!geometryToSave?.coordinates || geometryToSave.coordinates.length === 0) {
           throw new Error('Geometria inválida para salvar');
         }
 
@@ -529,5 +562,31 @@ export default defineComponent({
 
 .leaflet-draw-toolbar a {
   background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNTAgMTBjLTIyIDAtNDAgMTgtNDAgNDBzMTggNDAgNDAgNDAgNDAtMTggNDAtNDAtMTgtNDAtNDAtNDB6Ii8+PC9zdmc+') !important;
+}
+
+.leaflet-control-layers {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.leaflet-control-layers-toggle {
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBmaWxsPSIjMzMzIiBkPSJNNTAgMjBjLTE2LjUgMC0zMCAxMy41LTMwIDMwczEzLjUgMzAgMzAgMzAgMzAtMTMuNSAzMC0zMC0xMy41LTMwLTMwLTMwem0wIDUwYy0xMSAwLTIwLTktMjAtMjBzOS0yMCAyMC0yMCAyMCA5IDIwIDIwLTkgMjAtMjAgMjB6Ii8+PC9zdmc+') !important;
+  width: 36px;
+  height: 36px;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 10px;
+}
+
+.leaflet-control-layers label {
+  display: block;
+  margin: 5px 0;
+  cursor: pointer;
+}
+
+.leaflet-control-layers-selector {
+  margin-right: 5px;
 }
 </style>
