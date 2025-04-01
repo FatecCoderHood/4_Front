@@ -26,6 +26,7 @@
 </template>
 
 <script setup>
+import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 import { ref } from 'vue'
 
@@ -46,23 +47,30 @@ const password = ref('')
 const emailRules = ref([v => !!v || 'E-mail obrigatório'])
 const passwordRules = ref([v => !!v || 'Senha obrigatória'])
 
-const onsubmit = () => {
+const onsubmit = async () => {
     loading.value = true
     errorMessage.value = ''
+    
+    try {
+        const response = await axios.post('http://localhost:8080/auth/login', {
+            email: email.value,
+            senha: password.value
+        })
+        
+        // Extract user info from the response
+        const { name: userName, role } = response.data
 
-    setTimeout(() => {
-        if (email.value === 'admin@admin.com.br' && password.value === '123456') {
-            authStore.login('Rafael', 'Consultor') // Store auth state
+        // Store authenticated user
+        authStore.login(userName, role)
 
-            // Get the redirect path from query or default to home ('/')
-            const redirectPath = route.query.redirect ? String(route.query.redirect) : '/'
-
-            router.push(redirectPath) // Redirect after login
-        } else {
-            errorMessage.value = 'E-mail ou senha incorretos'
-        }
+        // Get the redirect path from query or default to home ('/')
+        const redirectPath = route.query.redirect ? String(route.query.redirect) : '/'
+        router.push(redirectPath) // Redirect after login
+    } catch (error) {
+        errorMessage.value = error.response?.data?.error || 'Erro ao tentar fazer login'
+    } finally {
         loading.value = false
-    }, 1000)
+    }
 }
 </script>
 
