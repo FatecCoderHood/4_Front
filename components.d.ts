@@ -11,6 +11,7 @@ declare module 'vue' {
     BaseDrawer: typeof import('./src/components/BaseDrawer.vue')['default']
     EditUserDrawer: typeof import('./src/components/users/EditUserDrawer.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    Login: typeof import('./src/components/Login.vue')['default']
     RegisterUserDrawer: typeof import('./src/components/users/RegisterUserDrawer.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

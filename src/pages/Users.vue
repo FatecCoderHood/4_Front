@@ -1,11 +1,3 @@
-<route>
-  {
-    "meta": {
-      "title": "Usuários"
-    }
-  }
-</route>
-
 <template>
   <v-container class="d-flex align-center pe-2 bg-white">
     <h1 class="text-black">Usuários</h1>

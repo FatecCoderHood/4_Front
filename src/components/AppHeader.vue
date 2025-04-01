@@ -38,7 +38,13 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
 import Sidebar from "@/components/SideBar.vue";
+
+const authStore = useAuthStore()
+const router = useRouter()
 
 const drawer = ref(false);
 
@@ -47,7 +53,9 @@ const toggleDrawer = () => {
 };
 
 const logout = () => {
+  authStore.logout()
   alert("Logout clicked!");
+  router.push('/Inicial')
 };
 </script>
 

@@ -18,7 +18,7 @@
           <v-img src="@/assets/conta.png" alt="Profile" />
         </v-avatar>
         <v-list-item-title class="text-uppercase" style="font-size: 12px"
-          >Administrador</v-list-item-title
+          >{{ userRole }}</v-list-item-title
         >
       </div>
 
@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { computed } from "vue";
-import { defineProps, defineEmits } from "vue";
+import { useAuthStore } from '@/stores/auth'
 
 defineProps({
   drawer: Boolean,
@@ -56,10 +56,24 @@ const emit = defineEmits(["update:drawer"]);
 const router = useRouter();
 const routes = router.getRoutes();
 
-// Computed para filtrar rotas com título
+const authStore = useAuthStore();
+const userRole = authStore.role;
+
+// Computed to filter routes with title, showMenu, and allowedRoles
 const filteredRoutes = computed(() => {
-  const filtered = routes.filter((route) => route.meta?.title);
-  return filtered;
+  return routes.filter((route) => {
+    // Safely access meta and fallback to an empty object
+    const meta = route.meta || {};
+
+    // Explicitly cast allowedRoles to string[] or fallback to empty array
+    const allowedRoles = (meta.allowedRoles as string[] | undefined) || [];
+
+    return (
+      meta.showMenu === true &&          // Show menu condition
+      allowedRoles.includes(userRole) && // Role check
+      meta.title                        // Ensure title exists
+    );
+  });
 });
 </script>
 
