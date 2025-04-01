@@ -1,12 +1,4 @@
 <!-- src/pages/Dashboard.vue -->
-<route>
-  {
-    "meta": {
-      "title": "Dashboard"
-    }
-  }
-  </route>
-
 <template>
   <div>
     <h1>Dashboard Page</h1>

@@ -1,11 +1,3 @@
-<route>
-  {
-    "meta": {
-      "title": "Mapa"
-    }
-  }
-</route>
-
 <template>
   <div>
     <div :class="['farm-sidebar', { 'open': isListVisible }]">

@@ -1,11 +1,3 @@
-<route>
-  {
-    "meta": {
-      "title": "Fazendas"
-    }
-  }
-</route>
-
 <template>
   <v-container>
     <v-row class="mb-6">

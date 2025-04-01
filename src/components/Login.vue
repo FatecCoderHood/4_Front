@@ -26,7 +26,16 @@
 </template>
 
 <script setup>
+import { useRouter, useRoute } from 'vue-router'
 import { ref } from 'vue'
+
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+
+// Get router and current route
+const router = useRouter()
+const route = useRoute()
 
 const emit = defineEmits(['login-sucesso'])
 const form = ref(false)
@@ -43,7 +52,12 @@ const onsubmit = () => {
 
     setTimeout(() => {
         if (email.value === 'admin@admin.com.br' && password.value === '123456') {
-            emit('login-sucesso')
+            authStore.login('Rafael', 'admin') // Store auth state
+
+            // Get the redirect path from query or default to home ('/')
+            const redirectPath = route.query.redirect ? String(route.query.redirect) : '/'
+
+            router.push(redirectPath) // Redirect after login
         } else {
             errorMessage.value = 'E-mail ou senha incorretos'
         }

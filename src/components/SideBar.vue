@@ -45,7 +45,6 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { computed } from "vue";
-import { defineProps, defineEmits } from "vue";
 
 defineProps({
   drawer: Boolean,

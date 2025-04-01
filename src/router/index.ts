@@ -1,28 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Inicial from '@/pages/Inicial.vue'
-import Users from '@/pages/Users.vue'
-import NotFound from '@/pages/NotFound.vue'
-
-const routes = [
-  {
-    path: '/Inicial',
-    component: Inicial,
-    meta: {
-      title: 'Login'
-    }
-  },
-  {
-    path: '/Users',
-    component: Users,
-    meta: {
-      title: 'Usuários',
-      requiresAuth: true
-    }
-  },
-
-  // Catch-all route for undefined paths (404 page)
-  { path: '/:pathMatch(.*)*', component: NotFound }
-]
+import { useAuthStore } from '@/stores/auth'
+import routes from "@/router/routes"
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -31,15 +9,17 @@ const router = createRouter({
 
 // Navigation Guard to check for authentication
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem('user') // Check if user is authenticated
+  const authStore = useAuthStore()
+  const isAuthenticated = authStore.isAuthenticated
+  const userRole = authStore.role
 
   if (to.meta.requiresAuth && !isAuthenticated) {
     // Redirect to login page if the route requires auth and the user is not authenticated
-    next({
-      path: '/inicial',
-      query: { redirect: to.fullPath }, // Store the attempted route
-    });
-  } else {
+    next({ path: '/inicial', query: { redirect: to.fullPath } });
+  } else if (to.meta.role && to.meta.role !== userRole) {
+    next('/403') // Redirect to a "Forbidden" page
+  }
+  else {
     next() // Allow navigation to the route
   }
 })
