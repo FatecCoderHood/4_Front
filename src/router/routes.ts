@@ -16,7 +16,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
             title: 'Home',
             requiresAuth: true,
-            showMenu: false
+            showMenu: false,
+            allowedRoles: ['Administrador', 'Consultor', 'Analista'],
         }
     },
     {
@@ -34,7 +35,9 @@ const routes: RouteRecordRaw[] = [
         meta: {
             title: 'Dashboard',
             requiresAuth: true,
-            showMenu: true
+            showMenu: true,
+            allowedRoles: ['Administrador'],
+
         }
     },
     {
@@ -43,7 +46,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
             title: 'Fazendas',
             requiresAuth: true,
-            showMenu: true
+            showMenu: true,
+            allowedRoles: ['Administrador', 'Consultor', 'Analista'],
         }
     },
     {
@@ -52,7 +56,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
             title: 'Mapa',
             requiresAuth: true,
-            showMenu: true
+            showMenu: true,
+            allowedRoles: ['Administrador', 'Consultor', 'Analista'],
         }
     },
     {
@@ -61,7 +66,8 @@ const routes: RouteRecordRaw[] = [
       meta: {
         title: 'Usuários',
         requiresAuth: true,
-        showMenu: true
+        showMenu: true,
+        allowedRoles: ['Administrador'],
       }
     },
   

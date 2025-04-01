@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: localStorage.getItem('user') || null as string | null,
-    role: (localStorage.getItem('role') as 'admin' | 'customer' | 'consultor' | null) || null,
+    role: (localStorage.getItem('role') as 'Administrador' | 'Consultor' | 'Analista' | '') || '',
     isAuthenticated: !!localStorage.getItem('user'),
     expiresAt: localStorage.getItem('expiresAt') ? Number(localStorage.getItem('expiresAt')) : null,
   }),
@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', {
     init() {
         // ✅ Initialize from localStorage after Pinia is ready
         this.user = localStorage.getItem('user') || null
-        this.role = localStorage.getItem('role') as 'admin' | 'customer' | 'consultor' | null
+        this.role = localStorage.getItem('role') as 'Administrador' | 'Consultor' | 'Analista' | ''
         this.isAuthenticated = !!localStorage.getItem('user')
         this.expiresAt = Number(localStorage.getItem('expiresAt')) || null
   
@@ -21,7 +21,7 @@ export const useAuthStore = defineStore('auth', {
         if (!this.expiresAt || Date.now() > this.expiresAt)
           this.logout()
     },
-    login(username: string, role: 'admin' | 'customer' | 'consultor') {
+    login(username: string, role: 'Administrador' | 'Consultor' | 'Analista') {
       const expirationTime = Date.now() + 1000 * 60 * 60 * 24 // ⏳ Expires in 24 hours
 
       this.user = username

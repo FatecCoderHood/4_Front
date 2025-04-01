@@ -12,11 +12,12 @@ router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   const isAuthenticated = authStore.isAuthenticated
   const userRole = authStore.role
+  const allowedRoles: String[] = to.meta.allowedRoles as String[]
 
   if (to.meta.requiresAuth && !isAuthenticated) {
     // Redirect to login page if the route requires auth and the user is not authenticated
     next({ path: '/inicial', query: { redirect: to.fullPath } });
-  } else if (to.meta.role && to.meta.role !== userRole) {
+  } else if (to.meta.allowedRoles && !allowedRoles.includes(userRole)) {
     next('/403') // Redirect to a "Forbidden" page
   }
   else {

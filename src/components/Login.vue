@@ -52,7 +52,7 @@ const onsubmit = () => {
 
     setTimeout(() => {
         if (email.value === 'admin@admin.com.br' && password.value === '123456') {
-            authStore.login('Rafael', 'admin') // Store auth state
+            authStore.login('Rafael', 'Consultor') // Store auth state
 
             // Get the redirect path from query or default to home ('/')
             const redirectPath = route.query.redirect ? String(route.query.redirect) : '/'
