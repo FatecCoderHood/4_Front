@@ -45,6 +45,8 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { computed } from "vue";
+import { useAuthStore } from '@/stores/auth'
+
 
 defineProps({
   drawer: Boolean,
@@ -55,9 +57,19 @@ const emit = defineEmits(["update:drawer"]);
 const router = useRouter();
 const routes = router.getRoutes();
 
+const authStore = useAuthStore()
+const userRole = authStore.role
+
 // Computed para filtrar rotas com título
 const filteredRoutes = computed(() => {
-  const filtered = routes.filter((route) => route.meta?.title);
+  const filtered = routes.filter((route) => {
+    const allowedRoles: String[] = route.meta?.allowedRoles as String[]
+
+    return route.meta?.showMenu === true &&
+           allowedRoles.includes(userRole) &&
+           route.meta?.title;
+  });
+
   return filtered;
 });
 </script>
