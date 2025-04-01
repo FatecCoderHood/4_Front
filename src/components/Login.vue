@@ -1,6 +1,6 @@
 <template>
     <v-container fluid class="d-flex align-center justify-center fill-height bg-white">
-        <v-card class="px-12 py-12 card-login h-50">
+        <v-card class="px-12 py-12 card-login">
             <v-form v-model="form" @submit.prevent="onsubmit">
 
                 <h1 class="font-weight-bold text-center mb-2">Entrar em GeoHood</h1>
