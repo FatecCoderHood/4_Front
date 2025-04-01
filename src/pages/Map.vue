@@ -29,7 +29,7 @@
       <h4>Editando: {{ selectedFarm.nome }}</h4>
       <button @click="saveDrawing" class="save-btn">Salvar Polígono</button>
       <button @click="cancelDrawing" class="cancel-btn">Cancelar</button>
-      <p class="hint">Desenhe o polígono da fazenda no mapa</p>
+      <p class="hint">Arraste os pontos para editar o polígono</p>
     </div>
   </div>
 </template>
@@ -55,6 +55,7 @@ export default defineComponent({
       drawnItems: null as L.FeatureGroup | null,
       isDrawingMode: false,
       selectedFarm: null as any | null,
+      editableLayer: null as L.Layer | null,
     };
   },
   mounted() {
@@ -80,7 +81,7 @@ export default defineComponent({
       drawButton.onAdd = () => {
         const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control draw-btn');
         button.innerHTML = '✏️';
-        button.title = 'Desenhar Polígono';
+        button.title = 'Editar Polígono';
         button.onclick = () => {
           if (!this.selectedFarm) {
             alert('Selecione uma fazenda primeiro');
@@ -163,12 +164,18 @@ export default defineComponent({
         this.drawnItems.clearLayers();
       }
       
+      if (this.editableLayer) {
+        this.map.removeLayer(this.editableLayer);
+        this.editableLayer = null;
+      }
+
+      if (this.geojsonLayer) {
+        this.map.removeLayer(this.geojsonLayer);
+        this.geojsonLayer = null;
+      }
+
       if (farm.parsedGeojson) {
         try {
-          if (this.geojsonLayer) {
-            this.map.removeLayer(this.geojsonLayer);
-          }
-
           this.geojsonLayer = L.geoJSON(farm.parsedGeojson, {
             style: {
               color: '#3388ff',
@@ -207,88 +214,127 @@ export default defineComponent({
       this.isDrawingMode = !this.isDrawingMode;
       
       if (this.isDrawingMode) {
-
-        if (this.drawnItems) {
-          this.drawnItems.clearLayers();
-        }
-
-        if (this.geojsonLayer) {
-          this.map.removeLayer(this.geojsonLayer);
-          this.geojsonLayer = null;
-        }
-        
-        this.drawControl = new L.Control.Draw({
-          position: 'topright',
-          draw: {
-            polygon: {
-              allowIntersection: false,
-              showArea: false, 
-              metric: true,
-              shapeOptions: {
-                color: '#ff7800',
-                fillColor: '#ff7800',
-                fillOpacity: 0.2
-              }
-            },
-            polyline: false,
-            rectangle: false,
-            circle: false,
-            marker: false,
-            circlemarker: false
-          },
-          edit: {
-            featureGroup: this.drawnItems
-          }
-        });
-        
-        this.map.addControl(this.drawControl);
-        this.map.on(L.Draw.Event.CREATED, (e: any) => {
-          if (this.drawnItems) {
-            const layer = (e as L.DrawEvents.Created).layer;
-            this.drawnItems.addLayer(layer);
-
-            layer.bindPopup('Polígono desenhado. Clique em "Salvar" para confirmar.');
-            layer.openPopup();
-          }
-        });
+        this.enterDrawingMode();
       } else {
-        if (this.drawControl) {
-          this.map.removeControl(this.drawControl);
-          this.drawControl = null;
+        this.exitDrawingMode();
+      }
+    },
+    
+    enterDrawingMode() {
+      if (!this.map || !this.selectedFarm || !this.drawnItems) return;
+      
+      this.drawnItems.clearLayers();
+      
+      if (this.geojsonLayer) {
+        this.map.removeLayer(this.geojsonLayer);
+        this.geojsonLayer = null;
+      }
+      
+      if (this.selectedFarm.parsedGeojson) {
+        this.editableLayer = L.geoJSON(this.selectedFarm.parsedGeojson, {
+          style: {
+            color: '#ff7800',
+            weight: 3,
+            opacity: 0.7,
+            fillOpacity: 0.2,
+            fillColor: '#ff7800'
+          }
+        });
+        
+        this.editableLayer.eachLayer((layer: L.Layer) => {
+          this.drawnItems?.addLayer(layer);
+          layer.bindPopup('Arraste os pontos para editar').openPopup();
+        });
+        
+        this.map.fitBounds(this.editableLayer.getBounds());
+      }
+      
+      this.drawControl = new L.Control.Draw({
+        position: 'topright',
+        draw: {
+          polygon: false,
+          polyline: false,
+          rectangle: false,
+          circle: false,
+          marker: false,
+          circlemarker: false
+        },
+        edit: {
+          featureGroup: this.drawnItems,
+          edit: {
+            selectedPathOptions: {
+              maintainColor: true
+            }
+          }
         }
+      });
+      
+      this.map.addControl(this.drawControl);
+      
+      this.map.on(L.Draw.Event.EDITED, (e: any) => {
+        const layers = e.layers;
+        layers.eachLayer((layer: L.Layer) => {
+          this.editableLayer = layer;
+        });
+      });
+      
+      setTimeout(() => {
+        if (this.drawControl && this.drawnItems && this.drawnItems.getLayers().length > 0) {
+          const editToolbar = (this.drawControl as any)._toolbars.edit;
+          if (editToolbar && editToolbar._modes && editToolbar._modes.edit) {
+            editToolbar._modes.edit.handler.enable();
+          }
+        }
+      }, 100);
+    },
+    
+    exitDrawingMode() {
+      if (this.drawControl && this.map) {
+        this.map.removeControl(this.drawControl);
+      }
 
-        this.map.off(L.Draw.Event.CREATED);
+      this.map?.off(L.Draw.Event.EDITED);
 
-        if (this.drawnItems) {
-          this.drawnItems.clearLayers();
-        }
-        if (this.selectedFarm?.parsedGeojson) {
-          this.showFarmgeojson(this.selectedFarm);
-        }
+      if (this.drawnItems) {
+        this.drawnItems.clearLayers();
+      }
+      
+      this.isDrawingMode = false;
+      
+      if (this.selectedFarm) {
+        this.showFarmgeojson(this.selectedFarm);
       }
     },
     
     cancelDrawing() {
-      this.isDrawingMode = false;
-      this.toggleDrawingMode(); 
+      this.exitDrawingMode();
     },
     
     async saveDrawing() {
-      if (!this.drawnItems || !this.selectedFarm) {
-        alert('Nenhum polígono desenhado ou fazenda selecionada!');
-        return;
-      }
-      
-      const geoJSON = this.drawnItems.toGeoJSON();
-      if (geoJSON.features.length === 0) {
-        alert('Nenhum polígono desenhado!');
+      if (!this.drawnItems || !this.selectedFarm || !this.editableLayer) {
+        alert('Nenhuma alteração no polígono foi feita!');
         return;
       }
       
       try {
+        const geoJSON = (this.editableLayer as any).toGeoJSON();
+        
+        let geometryToSave = geoJSON;
+        if (geoJSON.type === 'FeatureCollection' && geoJSON.features && geoJSON.features.length > 0) {
+          geometryToSave = geoJSON.features[0].geometry;
+        } else if (geoJSON.type === 'Feature') {
+          geometryToSave = geoJSON.geometry;
+        }
+
+        if (!geometryToSave || !geometryToSave.coordinates || geometryToSave.coordinates.length === 0) {
+          throw new Error('Geometria inválida para salvar');
+        }
+
         const payload = {
-          geojson: JSON.stringify(geoJSON.features[0].geometry) 
+          geojson: JSON.stringify(geometryToSave)
         };
+
+        console.log('Enviando para o servidor:', payload);
 
         const response = await fetch(`http://localhost:8080/areas/${this.selectedFarm.id}/geojson`, {
           method: 'PUT',
@@ -303,17 +349,18 @@ export default defineComponent({
           throw new Error(errorData.message || `Erro ${response.status}`);
         }
         
+        const result = await response.json();
+        console.log('Resposta do servidor:', result);
+        
         alert('Geometria salva com sucesso!');
-        this.isDrawingMode = false;
-        this.toggleDrawingMode();
-
-        this.selectedFarm.parsedGeojson = geoJSON.features[0].geometry;
+        this.selectedFarm.parsedGeojson = geometryToSave;
+        this.exitDrawingMode();
         this.showFarmgeojson(this.selectedFarm);
         
         await this.fetchFarms();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao salvar geometria:', error);
-        alert(`Erro ao salvar a geometria: ${error.message}`);
+        alert(`Erro ao salvar a geometria: ${error.message || 'Erro desconhecido'}`);
       }
     }
   },
@@ -483,5 +530,4 @@ export default defineComponent({
 .leaflet-draw-toolbar a {
   background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNTAgMTBjLTIyIDAtNDAgMTgtNDAgNDBzMTggNDAgNDAgNDAgNDAtMTggNDAtNDAtMTgtNDAtNDAtNDB6Ii8+PC9zdmc+') !important;
 }
-
 </style>
