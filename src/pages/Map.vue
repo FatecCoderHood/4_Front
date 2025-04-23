@@ -1,5 +1,5 @@
 <template>
-  <FarmsMenu :is-visible="showSidebar" @select-farm="selectFarm"></FarmsMenu >
+  <FarmsMenu @sidebar-toggle="handleSidebarToggle" @select-farm="selectFarm"></FarmsMenu >
   <div>
     <div id="map"></div>
     
@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-import FarmsMenu from '@/components/FarmsMenu.vue';
+
 import { defineComponent } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -25,11 +25,10 @@ import { components } from 'vuetify/dist/vuetify-labs.js';
 export default defineComponent({
   data() {
     return {
-      showSidebar: false,
+      sidebarOpen: false,
       map: null as L.Map | null,
       geojsonLayer: null as L.GeoJSON | null,
       farms: [] as any[],
-      isListVisible: false,
       loading: false,
       errorMessage: '',
       zoomControl: null as L.Control.Zoom | null,
@@ -68,6 +67,17 @@ export default defineComponent({
     this.initMap();
   },
   methods: {
+    handleSidebarToggle(isOpen: boolean) {
+    this.sidebarOpen = isOpen;
+    const leafletControls = document.querySelector('.leaflet-top.leaflet-left');
+    if (leafletControls) {
+      if (isOpen) {
+        leafletControls.classList.add('shifted-leaflet');
+      } else {
+        leafletControls.classList.remove('shifted-leaflet');
+      }
+    }
+  },
     initMap() {
       this.map = L.map('map').setView([-15.7801, -47.9292], 5);
       
@@ -80,16 +90,6 @@ export default defineComponent({
       };
       
       L.control.layers(baseLayers, null, { position: 'topright' }).addTo(this.map);
-
-      const farmListButton = L.control({ position: 'topleft' });
-      farmListButton.onAdd = () => {
-        const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control farm-btn');
-        button.innerHTML = '📋';
-        button.title = 'Fazendas Cadastradas';
-        button.onclick = this.toggleFarmList;
-        return button;
-      };
-      farmListButton.addTo(this.map);
 
       const drawButton = L.control({ position: 'topleft' });
       drawButton.onAdd = () => {
@@ -114,10 +114,6 @@ export default defineComponent({
     selectFarm(farm: any) {
       this.selectedFarm = farm;
       this.showFarmgeojson(farm);
-    },
-
-    toggleFarmList() {
-      this.showSidebar = !this.showSidebar;
     },
 
     showFarmgeojson(farm: { nome: string; parsedGeojson: any; cultura: string; produtividade: string | number }) {
@@ -328,6 +324,20 @@ export default defineComponent({
 </script>
 
 <style>
+
+.draw-btn {
+  background: #F1FAFC;
+  border: none;
+  padding: 6px;
+  font-size: 18px;
+  cursor: pointer;
+  margin-bottom: 5px;
+}
+
+.draw-btn:hover {
+  background: #ddd;
+}
+
 #map {
   width: 100%;
   height: 100vh;
@@ -341,19 +351,20 @@ export default defineComponent({
   transition: transform 0.3s ease;
 }
 
+.leaflet-left{
+  margin-top: 50px;
+}
+
+.leaflet-top.leaflet-left.shifted-leaflet {
+  transform: translateX(268px);
+  transition: transform 0.3s ease;
+}
+
 .leaflet-control-zoom {
   margin-left: 0;
   transition: transform 0.3s ease;
 }
 
-.farm-sidebar.open~#map .leaflet-top.leaflet-left .leaflet-control-zoom {
-  transform: translateX(250px);
-}
-
-.farm-sidebar.open~#map .leaflet-top.leaflet-left .farm-btn,
-.farm-sidebar.open~#map .leaflet-top.leaflet-left .draw-btn {
-  transform: translateX(250px);
-}
 
 .leaflet-control {
   z-index: 1000 !important;
