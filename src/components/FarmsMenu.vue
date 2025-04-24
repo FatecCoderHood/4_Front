@@ -1,6 +1,5 @@
 <template>
    <div :class="['farm-sidebar', { open: isVisible }]">
-     <h3>Fazendas Cadastradas</h3>
      <div class="search-container">
        <svg class="search-icon" viewBox="0 0 20 20">
          <g stroke="black" fill="none">
@@ -140,7 +139,7 @@ export default defineComponent({
         console.log('Fazendas processadas:', this.farms);
 
       } catch (error) {
-        this.errorMessage = 'Erro ao carregar fazendas';
+        this.errorMessage = 'Erro ao carregar fazendas.';
         console.error('Erro na requisição:', error);
       } finally {
         this.loading = false;
@@ -157,26 +156,21 @@ export default defineComponent({
 
 <style>
 .farm-sidebar {
-  position: fixed;
-  top: 0;
+  position: absolute;
   left: -268px;
   width: 268px;
   height: 100%;
   background: #F1FAFC;
-  padding: 15px;
+  padding: 16px;
   transition: left 0.3s;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
   z-index: 1001;
   overflow-y: auto;
-  border-radius: 0 5px 5px 0;
+  border-radius: 0 8px 8px 0;
 }
 
 .farm-sidebar.open {
   left: 0;
-}
-
-.farm-sidebar h3 {
-  margin-bottom: 70px;
 }
 
 .farm-sidebar ul {
@@ -314,7 +308,7 @@ export default defineComponent({
 .toggle-btn {
   position: absolute !important;
   left: 246px;
-  top: 110px;
+  top: 12px;
   width: 36px !important; 
   height: 36px !important;
   background: #F1FAFC;
