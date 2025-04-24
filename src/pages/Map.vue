@@ -1,6 +1,7 @@
 <template>
-  <FarmsMenu @sidebar-toggle="handleSidebarToggle" @select-farm="selectFarm"></FarmsMenu >
-  <div>
+  <div style="position: relative;">
+    <FarmsMenu @sidebar-toggle="handleSidebarToggle" @select-farm="selectFarm" />
+
     <div id="map"></div>
     
     <div v-if="selectedFarm && isDrawingMode" class="drawing-control-panel">
