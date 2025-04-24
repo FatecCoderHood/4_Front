@@ -341,7 +341,7 @@ export default defineComponent({
 
 #map {
   width: 100%;
-  height: 100vh;
+  height: 507px;
 }
 
 .error {
