@@ -1,23 +1,76 @@
 <template>
-  <v-container class="d-flex align-center pe-2 bg-white">
-    <h1 class="text-black">Usuários</h1>
+  <v-container>
+    <v-row class="mb-4">
+      <v-col cols="12">
+        <h2>Gestão de Usuários</h2>
+      </v-col>
+    </v-row>
 
-    <v-spacer></v-spacer>
+    <v-card style="background-color: #F1FAFC;">
+      <v-card-title class="d-flex justify-end align-center">
+        <div class="search-container-user">
+            <svg class="search-icon-user" viewBox="0 0 20 20">
+              <g stroke="black" fill="none">
+                <path d="M18.5 18.3l-5.4-5.4" />
+                <circle r="7" cy="8" cx="8" />
+              </g>
+              </svg>
+              <input
+                v-model="searchTermNameEmailAcess"
+                type="text"
+                placeholder="Pesquisar usuários"
+                class="search-input-user"
+              />
+            </div> 
+         <v-btn color="#FE5000" @click="addNewItem" style="color: #023047; height: 40px;">
+              <div style="width: 24px; display: flex; justify-content: center; margin-right: 4px;">
+                <svg width="20px" height="20px" viewBox="0 0 24.00 24.00" fill="#023047" stroke="#023047">
+                  <g id="SVGRepo_iconCarrier"> 
+                    <path d="M20 18L17 18M17 18L14 18M17 18V15M17 18V21M11 21H4C4 17.134 7.13401 14 11 14C11.695 14 12.3663 14.1013 13 14.2899M15 7C15 9.20914 13.2091 11 11 11C8.79086 11 7 9.20914 7 7C7 4.79086 8.79086 3 11 3C13.2091 3 15 4.79086 15 7Z" stroke-width="1.9" stroke-linecap="round" />
+                  </g>
+                </svg>
+              </div>
+            Novo Usuário
+          </v-btn>
+      </v-card-title>
 
-    <v-text-field v-model="search" density="compact" label="Pesquisar usuários" prepend-inner-icon="mdi-magnify"
-      variant="solo-filled" flat hide-details single-line clearable bg-color="white" class="text-black"></v-text-field>
+      <v-data-table 
+      :headers="headers" 
+      :items="filteredUsers" 
+      :items-per-page="10"
+      class="elevation-1 text-black">
+      <template v-slot:item.tipoAcesso="{ item }">
+        <v-chip :color="getColor(item.tipoAcesso)" dark>
+          {{ item.tipoAcesso }}
+        </v-chip>
+      </template>
 
-    <div>
-      <v-dialog v-model="dialog" max-width="500px">
-        <template v-slot:activator="{ props }">
-          <v-btn class="ma-2" icon="mdi-account-plus" color="primary" size="large" v-bind="props"
-            @click="addNewItem"></v-btn>
-        </template>
+      <template v-slot:item.actions="{ item }">
+        <svg
+              class="svg-icon"
+              fill="#023047"
+              width="16px"
+              height="16px"
+              viewBox="0 0 24.00 24.00"
+              stroke="#023047"
+              style="vertical-align: middle; margin-right: 2px;"
+              stroke-width="0.00024000000000000003"
+              @click="editItem(item)"
+              >
+              <path d="M20.052,3.948a3.234,3.234,0,0,1,0,4.575L18.471,10.1,13.9,5.529l1.581-1.581A3.234,3.234,0,0,1,20.052,3.948ZM8.438,20.138l8.619-8.62L12.482,6.943l-8.62,8.619L3,21Z"></path>
+            </svg>
+        <v-icon size="small" color="#FE5000" @click="deleteItem(item)">
+          mdi-delete
+        </v-icon>
+      </template>
+    </v-data-table>
+    </v-card>
+
+  <v-dialog v-model="dialog" max-width="500px">
         <v-card class="bg-white">
           <v-card-title class="text-black">
             <span class="text-h5">{{ formTitle }}</span>
           </v-card-title>
-   
           <v-card-text class="bg-white">
             <v-container>
               <v-row>
@@ -44,7 +97,6 @@
               </v-row>
             </v-container>
           </v-card-text>
-
           <v-card-actions class="bg-white">
             <v-spacer></v-spacer>
             <v-btn color="error" variant="text" @click="close" class="text-black">
@@ -68,32 +120,11 @@
           </v-card-actions>
         </v-card>
       </v-dialog>
-    </div>
-  </v-container>
-
-  <v-container class="bg-white">
-    <v-data-table :headers="headers" :items="filteredUsers" :search="search" :items-per-page="10"
-      class="elevation-1 bg-white text-black">
-      <template v-slot:item.tipoAcesso="{ item }">
-        <v-chip :color="getColor(item.tipoAcesso)" dark>
-          {{ item.tipoAcesso }}
-        </v-chip>
-      </template>
-
-      <template v-slot:item.actions="{ item }">
-        <v-icon class="me-2 text-blue" size="small" @click="editItem(item)">
-          mdi-pencil
-        </v-icon>
-        <v-icon size="small" class="text-red" @click="deleteItem(item)">
-          mdi-delete
-        </v-icon>
-      </template>
-    </v-data-table>
-  </v-container>
 
   <v-snackbar v-model="snackbar" :timeout="3000" :color="snackbarColor" location="top">
     <span class="text-black">{{ snackbarMessage }}</span>
   </v-snackbar>
+</v-container>
 </template>
 
 <script lang="ts">
@@ -130,6 +161,7 @@ export default defineComponent({
       dialog: false as boolean,
       dialogDelete: false as boolean,
       snackbar: false as boolean,
+      searchTermNameEmailAcess:'',
       snackbarMessage: '' as string,
       snackbarColor: 'success' as string,
       headers: [
@@ -166,7 +198,7 @@ export default defineComponent({
     },
     filteredUsers(): User[] {
       return this.users.filter(user => {
-        const searchTerm = this.search.toLowerCase();
+        const searchTerm = this.searchTermNameEmailAcess.toLowerCase();
         return (
           user.nome.toLowerCase().includes(searchTerm) ||
           user.email.toLowerCase().includes(searchTerm) ||
@@ -271,35 +303,110 @@ export default defineComponent({
 </script>
 
 <style scoped>
-/* Corrige a cor de fundo da tabela */
-:deep(.custom-data-table) {
-  background-color: #ffffff !important; /* Branco puro */
+.v-icon {
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
 }
 
-/* Corrige o cabeçalho */
-:deep(.custom-data-table .v-data-table-header) {
-  background-color: #f5f5f5 !important; /* Cinza muito claro */
+.v-icon:hover {
+  opacity: 1;
 }
 
-/* Corrige as linhas */
-:deep(.custom-data-table .v-data-table__tr) {
-  background-color: #ffffff !important; /* Branco puro */
+.svg-icon {
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
 }
 
-/* Corrige o hover */
-:deep(.custom-data-table .v-data-table__tr:hover) {
-  background-color: #f0f0f0 !important; /* Cinza bem claro no hover */
+.svg-icon:hover {
+  opacity: 1;
 }
 
-/* Corrige bordas */
-:deep(.custom-data-table .v-data-table__td),
-:deep(.custom-data-table .v-data-table-header__th) {
-  border-bottom: 1px solid #e0e0e0 !important;
+.v-card-title {
+  padding: 16px;
 }
 
-/* Mantém o texto preto */
-:deep(.custom-data-table .v-data-table__td),
-:deep(.custom-data-table .v-data-table-header__content) {
-  color: #000000 !important;
-}
+.v-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #F1FAFC;
+  }
+
+
+  .v-data-table-header th {
+    background-color: #f5f5f5;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+    font-size: 0.875rem;
+  }
+
+  .v-data-table-header tr {
+    height: 56px;
+  }
+
+  .v-data-table__wrapper {
+    overflow: auto;
+  }
+
+
+  .v-card {
+    overflow: visible;
+  }
+
+  .v-data-table tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  .v-data-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  .v-data-table :deep(.v-data-table__td),
+  .v-data-table :deep(.v-data-table-header__content) {
+    color: black !important;
+  }
+
+  .v-text-field input,
+  .v-select .v-select__selection-text,
+  .v-card-title,
+  .v-card-text {
+    color: black !important;
+  }
+
+.search-container-user {
+    position: relative;
+    margin-right: 16px;
+  }
+
+  .search-icon-user {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    opacity: 0.8;
+  }
+
+  .search-input-user {
+    width: 380px;
+    height: 40px;
+    padding: 4px 4px 4px 32px; /* Espaço à esquerda pro ícone */
+    border-radius: 4px;
+    border: none;
+    background-color: #C9DDE3;
+    outline: none;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .search-input-user::placeholder{
+    opacity: 0.6;
+    font-size: 12px;
+    font-weight: 450;
+  }
 </style>
