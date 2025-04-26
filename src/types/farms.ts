@@ -3,6 +3,7 @@ export interface Farm {
     nome: string;
     cidade: string;
     estado: string;
+    status?: string;
   }
   
   export interface Talhao {
@@ -13,9 +14,15 @@ export interface Farm {
     cultura?: string;
     safra?: string;
     coordinates?: any;
+    geojson?: any;
   }
   
   export interface GeoJsonData {
     type: string;
-    features: any[];
+    features?: any[];
+    geometry?: {
+      type: string;
+      coordinates: any[];
+    };
+    properties?: Record<string, any>;
   }
