@@ -1,8 +1,8 @@
 <template>
   <v-container>
-    <v-row class="mb-6">
+    <v-row class="mb-4">
       <v-col cols="12">
-        <h2 class="text-h5">CADASTRO DE ÁREAS/FAZENDAS</h2>
+        <h2>Gestão de Fazendas</h2>
       </v-col>
     </v-row>
 
@@ -10,6 +10,7 @@
       :farms="areas"
       :loading="loading"
       @add-farm="openAddModal"
+      @view-talhao="openViewModal"
       @edit-farm="openEditModal"
       @delete-farm="confirmDelete"
     />
@@ -32,6 +33,12 @@
       @confirm="deleteArea"
     />
 
+    <FarmViewDialog 
+    v-model="viewOpen"
+    :open="viewOpen"
+    @close="viewOpen = false"
+    />
+
     <v-snackbar v-model="showSnackbar" :timeout="5000" :color="snackbarColor" top right>
       {{ snackbarMessage }}
     </v-snackbar>
@@ -44,6 +51,7 @@ import axios, { AxiosError } from 'axios';
 import FarmList from '@/components/farms/FarmList.vue';
 import FarmForm from '@/components/farms/FarmForm.vue';
 import FarmDeleteDialog from '@/components/farms/FarmDeleteDialog.vue';
+import FarmViewDialog from '@/components/Farms/FarmViewDialog.vue';
 
 // Configuração do axios para apontar para o backend correto
 const api = axios.create({
@@ -65,6 +73,7 @@ export default defineComponent({
     const areas = ref<Area[]>([]);
     const loading = ref(false);
     const modalOpen = ref(false);
+    const viewOpen = ref (false);
     const deleteDialogOpen = ref(false);
     const editing = ref(false);
     const saving = ref(false);
@@ -104,6 +113,10 @@ export default defineComponent({
       } finally {
         loading.value = false;
       }
+    }
+
+    function openViewModal() {
+      viewOpen.value = true;
     }
 
     function openAddModal() {
@@ -190,6 +203,7 @@ export default defineComponent({
       loading,
       modalOpen,
       deleteDialogOpen,
+      viewOpen,
       editing,
       saving,
       deleting,
@@ -199,6 +213,7 @@ export default defineComponent({
       snackbarColor,
       openAddModal,
       openEditModal,
+      openViewModal,
       closeModal,
       confirmDelete,
       saveArea,
