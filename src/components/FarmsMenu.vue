@@ -282,18 +282,18 @@ export default defineComponent({
   top: 50%;
   left: 10px;
   transform: translateY(-50%);
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   pointer-events: none;
   opacity: 0.8;
 }
 
 .search-input {
-  width: 208px;
+  width: 220px;
   padding: 4px 4px 4px 32px; /* Espaço à esquerda pro ícone */
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
-  background-color: #D9D9D9;
+  background-color: #C9DDE3;
   outline: none;
   font-size: 14px;
   font-weight: 400;
