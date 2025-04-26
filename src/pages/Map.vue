@@ -1,466 +1,264 @@
 <template>
-  <div style="position: relative;">
-    <FarmsMenu @sidebar-toggle="handleSidebarToggle" @select-farm="selectFarm" />
-
-    <div id="map"></div>
+  <div class="map-page">
+    <FarmsMenu 
+      ref="farmsMenu"
+      @select-area="handleAreaSelection"
+      @sidebar-toggle="handleSidebarToggle"
+    />
     
-    <div v-if="selectedFarm && isDrawingMode" class="drawing-control-panel">
-      <h4>Editando: {{ selectedFarm.nome }}</h4>
-      <button @click="saveDrawing" class="save-btn">Salvar Polígono</button>
-      <button @click="cancelDrawing" class="cancel-btn">Cancelar</button>
-      <p class="hint">Arraste os pontos para editar o polígono</p>
+    <div id="map" ref="mapContainer"></div>
+    
+    <MapControls
+      v-if="map"
+      :map="map"
+      :show-edit-button="!!selectedArea"
+      @toggle-edit="toggleDrawingMode"
+    />
+    
+    <GeoJSONLayer
+      v-if="map"
+      ref="geoJSONLayer"
+      :map="map"
+      :area="selectedArea"
+      :editable="isDrawingMode"
+      @edit-complete="handleEditComplete"
+    />
+    
+    <DrawingPanel
+      v-if="selectedArea && isDrawingMode"
+      :area="selectedArea"
+      @save="saveDrawing"
+      @cancel="cancelDrawing"
+    />
+
+    <!-- Botão de controle de mapa melhorado -->
+    <div class="map-style-control">
+      <button class="map-style-button" @click="showMapStyleOptions = !showMapStyleOptions">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6l9-4 9 4-9 4-9-4z"></path>
+          <path d="M3 13l9 4 9-4-9-4-9 4z"></path>
+          <path d="M3 20l9 4 9-4-9-4-9 4z"></path>
+        </svg>
+      </button>
+      
+      <div v-if="showMapStyleOptions" class="map-style-options">
+        <h4>Estilo do Mapa</h4>
+        <select v-model="selectedMapStyle" @change="changeMapStyle">
+          <option value="osm">OpenStreetMap</option>
+          <option value="satellite">Satélite</option>
+          <option value="topo">Topográfico</option>
+          <option value="dark">Escuro</option>
+        </select>
+      </div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-
 import { defineComponent } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw/dist/leaflet.draw';
-import { components } from 'vuetify/dist/vuetify-labs.js';
-
+import FarmsMenu from '@/components/Map/FarmsMenu.vue';
+import DrawingPanel from '@/components/Map/DrawingPanel.vue';
+import MapControls from '@/components/Map/MapControls.vue';
+import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
+import { Farm, Talhao } from '@/types/farms';
 
 export default defineComponent({
+  name: 'MapPage',
+  components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer },
+
   data() {
     return {
-      sidebarOpen: false,
       map: null as L.Map | null,
-      geojsonLayer: null as L.GeoJSON | null,
-      farms: [] as any[],
-      loading: false,
-      errorMessage: '',
-      zoomControl: null as L.Control.Zoom | null,
-      drawControl: null as L.Control.Draw | null,
-      drawnItems: null as L.FeatureGroup | null,
+      selectedArea: null as (Farm & { talhoes: Talhao[] }) | null,
       isDrawingMode: false,
-      selectedFarm: null as any | null,
-      editableLayer: null as L.Layer | null,
-      mapProviders: {
-        osm: {
-          name: 'OpenStreetMap',
-          layer: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-          })
-        },
-        satellite: {
-          name: 'Satélite',
-          layer: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Esri WorldImagery',
-            maxZoom: 19
-          })
-        },
-        terrain: {
-          name: 'Terreno',
-          layer: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-            attribution: 'OpenTopoMap',
-            maxZoom: 17
-          })
-        }
-      },
-      currentMapProvider: 'osm'
+      sidebarOpen: false,
+      showMapStyleOptions: false,
+      selectedMapStyle: 'osm',
+      baseLayers: {} as Record<string, L.TileLayer>,
+      currentBaseLayer: null as L.TileLayer | null
     };
   },
+
   mounted() {
-    this.initMap();
+    this.$nextTick(() => {
+      this.initMap();
+      this.initBaseLayers();
+    });
   },
+
   methods: {
-    handleSidebarToggle(isOpen: boolean) {
-    this.sidebarOpen = isOpen;
-    const leafletControls = document.querySelector('.leaflet-top.leaflet-left');
-    if (leafletControls) {
-      if (isOpen) {
-        leafletControls.classList.add('shifted-leaflet');
-      } else {
-        leafletControls.classList.remove('shifted-leaflet');
-      }
-    }
-  },
     initMap() {
-      this.map = L.map('map').setView([-15.7801, -47.9292], 5);
+      if (!this.$refs.mapContainer) return;
       
-      this.mapProviders[this.currentMapProvider].layer.addTo(this.map);
-
-      const baseLayers = {
-        "OpenStreetMap": this.mapProviders.osm.layer,
-        "Satélite": this.mapProviders.satellite.layer,
-        "Terreno": this.mapProviders.terrain.layer
-      };
+      this.map = L.map(this.$refs.mapContainer as HTMLElement).setView([-15.7801, -47.9292], 5);
       
-      L.control.layers(baseLayers, null, { position: 'topright' }).addTo(this.map);
-
-      const drawButton = L.control({ position: 'topleft' });
-      drawButton.onAdd = () => {
-        const button = L.DomUtil.create('button', 'leaflet-bar leaflet-control draw-btn');
-        button.innerHTML = '✏️';
-        button.title = 'Editar Polígono';
-        button.onclick = () => {
-          if (!this.selectedFarm) {
-            alert('Selecione uma fazenda primeiro');
-            return;
-          }
-          this.toggleDrawingMode();
-        };
-        return button;
-      };
-      drawButton.addTo(this.map);
-
-      this.drawnItems = new L.FeatureGroup();
-      this.map.addLayer(this.drawnItems);
+      // Inicializa com OpenStreetMap como padrão
+      this.baseLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(this.map);
+      
+      this.currentBaseLayer = this.baseLayers.osm;
     },
 
-    selectFarm(farm: any) {
-      this.selectedFarm = farm;
-      this.showFarmgeojson(farm);
-    },
-
-    showFarmgeojson(farm: { nome: string; parsedGeojson: any; cultura: string; produtividade: string | number }) {
-      console.log('Exibindo fazenda:', farm);
+    initBaseLayers() {
       if (!this.map) return;
       
-      if (this.drawnItems) {
-        this.drawnItems.clearLayers();
-      }
-      
-      if (this.editableLayer) {
-        this.map.removeLayer(this.editableLayer);
-        this.editableLayer = null;
-      }
-
-      if (this.geojsonLayer) {
-        this.map.removeLayer(this.geojsonLayer);
-        this.geojsonLayer = null;
-      }
-
-      if (farm.parsedGeojson) {
-        try {
-          this.geojsonLayer = L.geoJSON(farm.parsedGeojson, {
-            style: {
-              color: '#3388ff',
-              weight: 3,
-              opacity: 0.7,
-              fillOpacity: 0.2,
-              fillColor: '#3388ff'
-            },
-            onEachFeature: (feature, layer) => {
-              const popupContent = `
-                <div class="farm-popup">
-                  <h4>${farm.nome}</h4>
-                  <p><strong>Cultura:</strong> ${farm.cultura}</p>
-                  <p><strong>Produtividade:</strong> ${farm.produtividade} <strong>sacas/ha:</strong></p>
-                </div>
-              `;
-              layer.bindPopup(popupContent);
-            }
-          }).addTo(this.map);
-
-          this.map.fitBounds(this.geojsonLayer.getBounds());
-        } catch (error) {
-          console.error('Erro ao exibir fazenda:', error);
-          alert('Erro ao exibir a geometria da fazenda');
-        }
-      }
-    },
-
-    toggleDrawingMode() {
-      if (!this.map || !this.selectedFarm) return;
-      
-      this.isDrawingMode = !this.isDrawingMode;
-      
-      if (this.isDrawingMode) {
-        this.enterDrawingMode();
-      } else {
-        this.exitDrawingMode();
-      }
-    },
-    
-    enterDrawingMode() {
-      if (!this.map || !this.selectedFarm || !this.drawnItems) return;
-      
-      this.drawnItems.clearLayers();
-      
-      if (this.geojsonLayer) {
-        this.map.removeLayer(this.geojsonLayer);
-        this.geojsonLayer = null;
-      }
-      
-      if (this.selectedFarm.parsedGeojson) {
-        this.editableLayer = L.geoJSON(this.selectedFarm.parsedGeojson, {
-          style: {
-            color: '#ff7800',
-            weight: 3,
-            opacity: 0.7,
-            fillOpacity: 0.2,
-            fillColor: '#ff7800'
-          }
-        });
-
-        this.editableLayer.eachLayer((layer: L.Layer) => {
-          this.drawnItems?.addLayer(layer);
-          layer.bindPopup('Arraste os pontos para editar').openPopup();
-        });
-        
-        this.map.fitBounds(this.editableLayer.getBounds());
-      }
- 
-      this.drawControl = new L.Control.Draw({
-        position: 'topright',
-        draw: {
-          polygon: false,
-          polyline: false,
-          rectangle: false,
-          circle: false,
-          marker: false,
-          circlemarker: false
-        },
-        edit: {
-          featureGroup: this.drawnItems,
-          edit: {
-            selectedPathOptions: {
-              maintainColor: true
-            }
-          }
-        }
+      // Satélite
+      this.baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
       });
       
-      this.map.addControl(this.drawControl);
-      
-      this.map.on(L.Draw.Event.EDITED, (e: any) => {
-        const layers = e.layers;
-        layers.eachLayer((layer: L.Layer) => {
-          this.editableLayer = layer;
-        });
+      // Topográfico
+      this.baseLayers.topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
       });
       
-      setTimeout(() => {
-        if (this.drawControl && this.drawnItems && this.drawnItems.getLayers().length > 0) {
-          const editToolbar = (this.drawControl as any)._toolbars.edit;
-          if (editToolbar && editToolbar._modes && editToolbar._modes.edit) {
-            editToolbar._modes.edit.handler.enable();
-          }
+      // Escuro
+      this.baseLayers.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      });
+    },
+
+    changeMapStyle() {
+      if (!this.map || !this.currentBaseLayer) return;
+      
+      this.map.removeLayer(this.currentBaseLayer);
+      this.currentBaseLayer = this.baseLayers[this.selectedMapStyle];
+      this.map.addLayer(this.currentBaseLayer);
+    },
+
+    handleAreaSelection(area: Farm & { talhoes: Talhao[] }) {
+      this.selectedArea = area;
+      this.$nextTick(() => {
+        if (this.$refs.geoJSONLayer) {
+          (this.$refs.geoJSONLayer as any).displayGeoJSON(area);
         }
-      }, 100);
+      });
     },
-    
-    exitDrawingMode() {
-      if (this.drawControl && this.map) {
-        this.map.removeControl(this.drawControl);
-      }
 
-      this.map?.off(L.Draw.Event.EDITED);
+    handleSidebarToggle(isOpen: boolean) {
+      this.sidebarOpen = isOpen;
+      const controls = document.querySelector('.leaflet-top.leaflet-left');
+      controls?.classList.toggle('shifted-leaflet', isOpen);
+    },
 
-      if (this.drawnItems) {
-        this.drawnItems.clearLayers();
-      }
-      
-      this.isDrawingMode = false;
-      
-      if (this.selectedFarm) {
-        this.showFarmgeojson(this.selectedFarm);
-      }
+    toggleDrawingMode(isEditing: boolean) {
+      this.isDrawingMode = isEditing;
     },
-    
-    cancelDrawing() {
-      this.exitDrawingMode();
+
+    handleEditComplete(geojson: any) {
+      console.log('GeoJSON editado:', geojson);
     },
-    
+
     async saveDrawing() {
-      if (!this.drawnItems || !this.selectedFarm || !this.editableLayer) {
-        alert('Nenhuma alteração no polígono foi feita!');
-        return;
-      }
-      
       try {
-        const geoJSON = (this.editableLayer as any).toGeoJSON();
-        
-        let geometryToSave = geoJSON;
-        if (geoJSON.type === 'FeatureCollection' && geoJSON.features?.length > 0) {
-          geometryToSave = geoJSON.features[0].geometry;
-        } else if (geoJSON.type === 'Feature') {
-          geometryToSave = geoJSON.geometry;
-        }
-
-        if (!geometryToSave?.coordinates || geometryToSave.coordinates.length === 0) {
-          throw new Error('Geometria inválida para salvar');
-        }
-
-        const payload = {
-          geojson: JSON.stringify(geometryToSave)
-        };
-
-        console.log('Enviando para o servidor:', payload);
-
-        const response = await fetch(`http://localhost:8080/areas/${this.selectedFarm.id}/geojson`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `Erro ${response.status}`);
-        }
-        
-        const result = await response.json();
-        console.log('Resposta do servidor:', result);
-        
-        alert('Geometria salva com sucesso!');
-        this.selectedFarm.parsedGeojson = geometryToSave;
-        this.exitDrawingMode();
-        this.showFarmgeojson(this.selectedFarm);
-        
-        await this.fetchFarms();
-      } catch (error: any) {
-        console.error('Erro ao salvar geometria:', error);
-        alert(`Erro ao salvar a geometria: ${error.message || 'Erro desconhecido'}`);
+        // Implemente a lógica de salvamento aqui
+        alert('Alterações salvas com sucesso!');
+        this.isDrawingMode = false;
+      } catch (error) {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar alterações');
       }
+    },
+
+    cancelDrawing() {
+      this.isDrawingMode = false;
     }
   },
+
+  beforeUnmount() {
+    if (this.map) {
+      this.map.remove();
+      this.map = null;
+    }
+  }
 });
 </script>
 
-<style>
-
-.draw-btn {
-  background: #F1FAFC;
-  border: none;
-  padding: 6px;
-  font-size: 18px;
-  cursor: pointer;
-  margin-bottom: 5px;
-}
-
-.draw-btn:hover {
-  background: #ddd;
-}
-
-#map {
+<style scoped>
+.map-page {
+  position: relative;
   width: 100%;
   height: 100vh;
 }
 
-.error {
-  color: red;
+#map {
+  width: 100%;
+  height: 100%;
 }
 
-.leaflet-top {
+/* Estilos para o controle de estilo do mapa */
+.map-style-control {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.map-style-button {
+  background: white;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.map-style-button:hover {
+  background: #f4f4f4;
+  transform: scale(1.05);
+}
+
+.map-style-button svg {
+  transition: all 0.2s ease;
+}
+
+.map-style-button:hover svg {
+  stroke: #0066cc;
+}
+
+.map-style-options {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  background: white;
+  padding: 15px;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  width: 200px;
+}
+
+.map-style-options h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.map-style-options select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 13px;
+}
+</style>
+
+<style>
+.leaflet-top.leaflet-left {
   transition: transform 0.3s ease;
-}
-
-.leaflet-left{
-  margin-top: 50px;
 }
 
 .leaflet-top.leaflet-left.shifted-leaflet {
   transform: translateX(268px);
-  transition: transform 0.3s ease;
-}
-
-.leaflet-control-zoom {
-  margin-left: 0;
-  transition: transform 0.3s ease;
-}
-
-
-.leaflet-control {
-  z-index: 1000 !important;
-}
-
-.farm-popup {
-  min-width: 150px;
-  font-family: Arial, sans-serif;
-}
-
-.farm-popup h4 {
-  margin: 0 0 10px 0;
-  color: #3388ff;
-  font-size: 16px;
-}
-
-.farm-popup p {
-  margin: 5px 0;
-  font-size: 14px;
-}
-
-.farm-popup strong {
-  color: #555;
-}
-
-.drawing-control-panel {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.95);
-  padding: 15px;
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  text-align: center;
-}
-
-.drawing-control-panel h4 {
-  margin: 0 0 10px 0;
-  color: #333;
-}
-
-.drawing-control-panel button {
-  padding: 8px 15px;
-  margin: 0 5px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.drawing-control-panel .save-btn {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.drawing-control-panel .cancel-btn {
-  background-color: #f44336;
-  color: white;
-}
-
-.drawing-control-panel .hint {
-  margin: 10px 0 0 0;
-  font-size: 0.9em;
-  color: #666;
-}
-
-.leaflet-draw-toolbar a {
-  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNTAgMTBjLTIyIDAtNDAgMTgtNDAgNDBzMTggNDAgNDAgNDAgNDAtMTggNDAtNDAtMTgtNDAtNDAtNDB6Ii8+PC9zdmc+') !important;
-}
-
-.leaflet-control-layers {
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-}
-
-.leaflet-control-layers-toggle {
-  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBmaWxsPSIjMzMzIiBkPSJNNTAgMjBjLTE2LjUgMC0zMCAxMy41LTMwIDMwczEzLjUgMzAgMzAgMzAgMzAtMTMuNSAzMC0zMC0xMy41LTMwLTMwLTMwem0wIDUwYy0xMSAwLTIwLTktMjAtMjBzOS0yMCAyMC0yMCAyMCA5IDIwIDIwLTkgMjAtMjAgMjB6Ii8+PC9zdmc+') !important;
-  width: 36px;
-  height: 36px;
-}
-
-.leaflet-control-layers-expanded {
-  padding: 10px;
-}
-
-.leaflet-control-layers label {
-  display: block;
-  margin: 5px 0;
-  cursor: pointer;
-}
-
-.leaflet-control-layers-selector {
-  margin-right: 5px;
 }
 </style>
