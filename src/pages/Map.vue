@@ -39,6 +39,15 @@
       @reject="rejectFarm"
     />
     
+    
+    <!-- Modal de Status -->
+    <StatusActions 
+      :visible="showStatusActions"
+      :farmId="selectedArea?.id || 0"
+      @approve="approveFarm" 
+      @reject="rejectFarm"
+    />
+    
     <!-- Botão de controle de mapa melhorado -->
     <div class="map-style-control">
       <button class="map-style-button" @click="showMapStyleOptions = !showMapStyleOptions">
@@ -73,10 +82,12 @@ import DrawingPanel from '@/components/Map/DrawingPanel.vue';
 import MapControls from '@/components/Map/MapControls.vue';
 import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
 import StatusActions from '@/components/Map/StatusActions.vue'; // Importando o StatusActions
+import StatusActions from '@/components/Map/StatusActions.vue'; // Importando o StatusActions
 import { Farm, Talhao } from '@/types/farms';
 
 export default defineComponent({
   name: 'MapPage',
+  components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer, StatusActions }, // Registrando o StatusActions
   components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer, StatusActions }, // Registrando o StatusActions
 
   data() {
@@ -88,6 +99,8 @@ export default defineComponent({
       showMapStyleOptions: false,
       selectedMapStyle: 'osm',
       baseLayers: {} as Record<string, L.TileLayer>,
+      currentBaseLayer: null as L.TileLayer | null,
+      showStatusActions: false, // Variável para controlar a visibilidade do modal
       currentBaseLayer: null as L.TileLayer | null,
       showStatusActions: false, // Variável para controlar a visibilidade do modal
     };
@@ -175,6 +188,7 @@ export default defineComponent({
 
     async saveDrawing() {
       try {
+        // Lógica de salvamento aqui
         // Lógica de salvamento aqui
         alert('Alterações salvas com sucesso!');
         this.isDrawingMode = false;

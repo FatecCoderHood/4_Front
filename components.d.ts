@@ -8,7 +8,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppHeader: typeof import('./src/components/AppHeader.vue')['default']
-    ApproveRejectArea: typeof import('./src/components/Farms/ApproveRejectArea.vue')['default']
     BaseDrawer: typeof import('./src/components/BaseDrawer.vue')['default']
     DrawingPanel: typeof import('./src/components/Map/DrawingPanel.vue')['default']
     EditUserDrawer: typeof import('./src/components/users/EditUserDrawer.vue')['default']
@@ -17,6 +16,7 @@ declare module 'vue' {
     FarmList: typeof import('./src/components/Farms/FarmList.vue')['default']
     FarmsMenu: typeof import('./src/components/Map/FarmsMenu.vue')['default']
     FarmTableActions: typeof import('./src/components/Farms/FarmTableActions.vue')['default']
+    FarmViewDialog: typeof import('./src/components/Farms/FarmViewDialog.vue')['default']
     GeoJSONLayer: typeof import('./src/components/Map/GeoJSONLayer.vue')['default']
     GeoJsonProcessor: typeof import('./src/components/Farms/GeoJsonProcessor.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
@@ -26,7 +26,6 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SideBar: typeof import('./src/components/SideBar.vue')['default']
-    StatusAction: typeof import('./src/components/Map/StatusAction.vue')['default']
     StatusActions: typeof import('./src/components/Map/StatusActions.vue')['default']
   }
 }
