@@ -30,6 +30,8 @@
       @save="saveDrawing"
       @cancel="cancelDrawing"
     />
+      
+  
     
     <!-- Modal de Status -->
     <StatusActions 
@@ -90,6 +92,7 @@ export default defineComponent({
       baseLayers: {} as Record<string, L.TileLayer>,
       currentBaseLayer: null as L.TileLayer | null,
       showStatusActions: false, // Variável para controlar a visibilidade do modal
+      currentBaseLayer: null as L.TileLayer | null,
     };
   },
 
@@ -143,10 +146,18 @@ export default defineComponent({
 
     handleAreaSelection(area: Farm & { talhoes: Talhao[] }) {
       this.selectedArea = area;
-      this.showStatusActions = true; // Exibe o modal quando uma área é selecionada
+      this.showStatusActions = true;
+
       this.$nextTick(() => {
+        // Atualiza o GeoJSONLayer
         if (this.$refs.geoJSONLayer) {
           (this.$refs.geoJSONLayer as any).displayGeoJSON(area);
+        }
+
+        // Atualiza diretamente no FarmsMenu o status atualizado
+        const farmsMenu = this.$refs.farmsMenu as any;
+        if (farmsMenu && farmsMenu.updateFarmStatus) {
+          farmsMenu.updateFarmStatus(area.id, area.status);
         }
       });
     },
@@ -168,6 +179,7 @@ export default defineComponent({
     async saveDrawing() {
       try {
         // Lógica de salvamento aqui
+        // Lógica de salvamento aqui
         alert('Alterações salvas com sucesso!');
         this.isDrawingMode = false;
       } catch (error) {
@@ -180,46 +192,51 @@ export default defineComponent({
       this.isDrawingMode = false;
     },
 
-    async approveFarm(farmId: number) {
-      console.log('Fazenda aprovada:', farmId);
-      try {
-        await this.updateFarmStatus(farmId, 'APROVADO');
-        this.showStatusActions = false; // Fecha o modal após aprovação
-      } catch (error) {
-        console.error('Erro ao aprovar fazenda:', error);
-      }
-    },
-
-    async rejectFarm(farmId: number) {
-      console.log('Fazenda recusada:', farmId);
-      try {
-        await this.updateFarmStatus(farmId, 'RECUSADO');
-        this.showStatusActions = false; // Fecha o modal após rejeição
-      } catch (error) {
-        console.error('Erro ao recusar fazenda:', error);
-      }
-    },
-
-    async updateFarmStatus(farmId: number, status: string) {
-      try {
-        const response = await fetch(`http://localhost:8080/areas/${farmId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Erro ao atualizar o status da fazenda');
-        }
-
-        console.log('Status da fazenda atualizado com sucesso');
-      } catch (error) {
-        console.error('Erro ao atualizar status da fazenda:', error);
-        throw error; // Para ser capturado nos métodos approve/reject
-      }
+  async approveFarm(farmId: number) {
+    console.log('Fazenda aprovada:', farmId);
+    try {
+      await this.updateFarmStatus(farmId, 'APROVADO'); // Atualiza diretamente o status
+      this.showStatusActions = false; // Fecha o modal após aprovação
+    } catch (error) {
+      console.error('Erro ao aprovar fazenda:', error);
     }
+  },
+
+  async rejectFarm(farmId: number) {
+    console.log('Fazenda recusada:', farmId);
+    try {
+      await this.updateFarmStatus(farmId, 'RECUSADO'); // Atualiza diretamente o status
+      this.showStatusActions = false; // Fecha o modal após rejeição
+    } catch (error) {
+      console.error('Erro ao recusar fazenda:', error);
+    }
+  },
+
+  async updateFarmStatus(farmId: number, status: string) {
+    try {
+      const response = await fetch(`http://localhost:8080/areas/${farmId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar o status da fazenda');
+      }
+
+      console.log('Status atualizado com sucesso no backend:', status);
+
+      // Agora atualiza visualmente no componente FarmsMenu
+      const farmsMenu = this.$refs.farmsMenu as any;
+      if (farmsMenu && farmsMenu.updateFarmStatus) {
+        farmsMenu.updateFarmStatus(farmId, status); // Propaga para FarmsMenu
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status da fazenda:', error);
+    }
+  },
   },
 
   beforeUnmount() {

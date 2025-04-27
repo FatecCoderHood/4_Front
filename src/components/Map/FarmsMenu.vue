@@ -13,7 +13,7 @@
         placeholder="Pesquise por nome"
         class="search-input"
       />
-    </div> 
+    </div>
     <p v-if="noDataMessage" class="error">{{ noDataMessage }}</p>
     <ul v-if="!loading && !errorMessage && farms.length > 0">
       <li v-for="farm in filteredFarms" :key="farm.id">
@@ -28,9 +28,9 @@
           </div>
         </button>
       </li>
-    </ul>                   
-  </div> 
-  
+    </ul>
+  </div>
+
   <button class="toggle-btn" :class="{ 'btn-closed': !isVisible }" @click="toggleSidebar">
     <svg class="arrow" :style="{ transform: isVisible ? 'rotate(270deg)' : 'rotate(90deg)' }" viewBox="0 0 512 512" width="16" height="16">
       <path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"></path>
@@ -51,7 +51,7 @@ interface FarmWithTalhoes extends Farm {
 export default defineComponent({
   name: 'FarmsMenu',
   emits: ['select-area', 'sidebar-toggle'],
-  
+
   data() {
     return {
       farms: [] as FarmWithTalhoes[],
@@ -61,13 +61,13 @@ export default defineComponent({
       searchQuery: '',
     };
   },
-  
+
   computed: {
     filteredFarms(): FarmWithTalhoes[] {
       if (!this.searchQuery) return this.farms;
       const query = this.searchQuery.toLowerCase();
-      return this.farms.filter(farm => 
-        farm.nome.toLowerCase().includes(query) || 
+      return this.farms.filter(farm =>
+        farm.nome.toLowerCase().includes(query) ||
         farm.cidade.toLowerCase().includes(query)
       );
     },
@@ -80,16 +80,17 @@ export default defineComponent({
       return '';
     },
   },
-  
+
   mounted() {
     this.fetchFarms();
   },
-  
+
   methods: {
     selectFarm(farm: FarmWithTalhoes) {
+      console.log('Fazenda selecionada:', farm);
       this.$emit('select-area', {
         ...farm,
-        talhoes: farm.talhoes || []
+        talhoes: farm.talhoes || [],
       });
     },
 
@@ -98,32 +99,47 @@ export default defineComponent({
       try {
         const response = await fetch('http://localhost:8080/areas');
         if (!response.ok) throw new Error(`Erro ${response.status}`);
-        
+
         const data = await response.json();
+        console.log('Dados recebidos:', data);
+
         this.farms = data.map((farm: any) => ({
           ...farm,
           talhoes: farm.talhoes || [],
-          statusColor: this.getStatusColor(farm.status),
-          statusLabel: this.getStatusLabel(farm.status)
+          status: farm.status || 'em_analise',
+          statusColor: this.getStatusColor(farm.status || 'em_analise'),
+          statusLabel: this.getStatusLabel(farm.status || 'em_analise'),
         }));
-
       } catch (error) {
         this.errorMessage = 'Erro ao carregar fazendas.';
-        console.error('Erro:', error);
+        console.error(error);
       } finally {
         this.loading = false;
+      }
+    },
+
+    updateFarmStatus(farmId, newStatus) {
+      const farmIndex = this.farms.findIndex(farm => farm.id === farmId);
+      if (farmIndex >= 0) {
+        this.farms[farmIndex] = {
+          ...this.farms[farmIndex],
+          status: newStatus,
+          statusColor: this.getStatusColor(newStatus.toLowerCase()),
+          statusLabel: this.getStatusLabel(newStatus.toLowerCase()),
+        };
+        this.farms = [...this.farms]; // Force reactivityS
       }
     },
 
     getStatusColor(status: string) {
       const statusMap: Record<string, string> = {
         'em_analise': 'grey',
-        'ativo': '#4CAF50', // verde para ativo
-        'inativo': '#f44336', // vermelho para inativo
-        'aprovado': '#008CBA', // azul para aprovado
-        'recusado': '#FF6347' // tomate para recusado
+        'ativo': '#4CAF50',
+        'inativo': '#f44336',
+        'aprovado': '#008CBA',
+        'recusado': '#FF6347',
       };
-      return statusMap[status] || 'grey'; // retorna a cor associada ao status
+      return statusMap[status.toLowerCase()] || '';
     },
 
     getStatusLabel(status: string) {
@@ -132,16 +148,16 @@ export default defineComponent({
         'ativo': 'Ativo',
         'inativo': 'Inativo',
         'aprovado': 'Aprovado',
-        'recusado': 'Recusado'
+        'recusado': 'Recusado',
       };
-      return labelMap[status] || 'Em análise'; // retorna o label associado ao status
+      return labelMap[status.toLowerCase()] || '';
     },
 
     toggleSidebar() {
       this.isVisible = !this.isVisible;
       this.$emit('sidebar-toggle', this.isVisible);
-    }
-  }
+    },
+  },
 });
 </script>
 
@@ -171,6 +187,8 @@ export default defineComponent({
 
 .farm-sidebar button {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   width: 208px;
   height: 70px;
@@ -277,11 +295,17 @@ export default defineComponent({
 }
 
 .status-label {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  padding: 4px 8px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 12px;
   font-size: 0.7rem;
-  color: #555;
+  font-weight: bold;
+  color: black;
 }
 
 .status-text {
