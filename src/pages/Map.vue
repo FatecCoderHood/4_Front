@@ -31,6 +31,8 @@
       @cancel="cancelDrawing"
     />
       
+  
+    
     <!-- Modal de Status -->
     <StatusActions 
       :visible="showStatusActions"
