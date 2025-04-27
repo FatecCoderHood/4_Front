@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppHeader: typeof import('./src/components/AppHeader.vue')['default']
+    ApproveRejectArea: typeof import('./src/components/Farms/ApproveRejectArea.vue')['default']
     BaseDrawer: typeof import('./src/components/BaseDrawer.vue')['default']
     DrawingPanel: typeof import('./src/components/Map/DrawingPanel.vue')['default']
     EditUserDrawer: typeof import('./src/components/users/EditUserDrawer.vue')['default']
@@ -25,5 +26,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SideBar: typeof import('./src/components/SideBar.vue')['default']
+    StatusAction: typeof import('./src/components/Map/StatusAction.vue')['default']
+    StatusActions: typeof import('./src/components/Map/StatusActions.vue')['default']
   }
 }
