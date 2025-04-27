@@ -30,8 +30,6 @@
       @save="saveDrawing"
       @cancel="cancelDrawing"
     />
-      
-  
     
     <!-- Modal de Status -->
     <StatusActions 
@@ -74,12 +72,12 @@ import FarmsMenu from '@/components/Map/FarmsMenu.vue';
 import DrawingPanel from '@/components/Map/DrawingPanel.vue';
 import MapControls from '@/components/Map/MapControls.vue';
 import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
-import StatusActions from '@/components/Map/StatusActions.vue'; // Importando o StatusActions
+import StatusActions from '@/components/Map/StatusActions.vue';
 import { Farm, Talhao } from '@/types/farms';
 
 export default defineComponent({
   name: 'MapPage',
-  components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer, StatusActions }, // Registrando o StatusActions
+  components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer, StatusActions },
 
   data() {
     return {
@@ -88,11 +86,10 @@ export default defineComponent({
       isDrawingMode: false,
       sidebarOpen: false,
       showMapStyleOptions: false,
-      selectedMapStyle: 'osm',
+      selectedMapStyle: 'satellite', // Mapa de satélite como padrão
       baseLayers: {} as Record<string, L.TileLayer>,
       currentBaseLayer: null as L.TileLayer | null,
-      showStatusActions: false, // Variável para controlar a visibilidade do modal
-      currentBaseLayer: null as L.TileLayer | null,
+      showStatusActions: false,
     };
   },
 
@@ -109,20 +106,20 @@ export default defineComponent({
       
       this.map = L.map(this.$refs.mapContainer as HTMLElement).setView([-15.7801, -47.9292], 5);
       
-      // Inicializa com OpenStreetMap como padrão
-      this.baseLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+      // Inicializa com o Mapa de Satélite como padrão
+      this.baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
       }).addTo(this.map);
       
-      this.currentBaseLayer = this.baseLayers.osm;
+      this.currentBaseLayer = this.baseLayers.satellite;
     },
 
     initBaseLayers() {
       if (!this.map) return;
       
-      // Satélite
-      this.baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      // OpenStreetMap
+      this.baseLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
       });
       
       // Topográfico
@@ -149,12 +146,10 @@ export default defineComponent({
       this.showStatusActions = true;
 
       this.$nextTick(() => {
-        // Atualiza o GeoJSONLayer
         if (this.$refs.geoJSONLayer) {
           (this.$refs.geoJSONLayer as any).displayGeoJSON(area);
         }
 
-        // Atualiza diretamente no FarmsMenu o status atualizado
         const farmsMenu = this.$refs.farmsMenu as any;
         if (farmsMenu && farmsMenu.updateFarmStatus) {
           farmsMenu.updateFarmStatus(area.id, area.status);
@@ -178,8 +173,6 @@ export default defineComponent({
 
     async saveDrawing() {
       try {
-        // Lógica de salvamento aqui
-        // Lógica de salvamento aqui
         alert('Alterações salvas com sucesso!');
         this.isDrawingMode = false;
       } catch (error) {
@@ -192,51 +185,50 @@ export default defineComponent({
       this.isDrawingMode = false;
     },
 
-  async approveFarm(farmId: number) {
-    console.log('Fazenda aprovada:', farmId);
-    try {
-      await this.updateFarmStatus(farmId, 'APROVADO'); // Atualiza diretamente o status
-      this.showStatusActions = false; // Fecha o modal após aprovação
-    } catch (error) {
-      console.error('Erro ao aprovar fazenda:', error);
-    }
-  },
-
-  async rejectFarm(farmId: number) {
-    console.log('Fazenda recusada:', farmId);
-    try {
-      await this.updateFarmStatus(farmId, 'RECUSADO'); // Atualiza diretamente o status
-      this.showStatusActions = false; // Fecha o modal após rejeição
-    } catch (error) {
-      console.error('Erro ao recusar fazenda:', error);
-    }
-  },
-
-  async updateFarmStatus(farmId: number, status: string) {
-    try {
-      const response = await fetch(`http://localhost:8080/areas/${farmId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar o status da fazenda');
+    async approveFarm(farmId: number) {
+      console.log('Fazenda aprovada:', farmId);
+      try {
+        await this.updateFarmStatus(farmId, 'APROVADO');
+        this.showStatusActions = false;
+      } catch (error) {
+        console.error('Erro ao aprovar fazenda:', error);
       }
+    },
 
-      console.log('Status atualizado com sucesso no backend:', status);
-
-      // Agora atualiza visualmente no componente FarmsMenu
-      const farmsMenu = this.$refs.farmsMenu as any;
-      if (farmsMenu && farmsMenu.updateFarmStatus) {
-        farmsMenu.updateFarmStatus(farmId, status); // Propaga para FarmsMenu
+    async rejectFarm(farmId: number) {
+      console.log('Fazenda recusada:', farmId);
+      try {
+        await this.updateFarmStatus(farmId, 'RECUSADO');
+        this.showStatusActions = false;
+      } catch (error) {
+        console.error('Erro ao recusar fazenda:', error);
       }
-    } catch (error) {
-      console.error('Erro ao atualizar status da fazenda:', error);
-    }
-  },
+    },
+
+    async updateFarmStatus(farmId: number, status: string) {
+      try {
+        const response = await fetch(`http://localhost:8080/areas/${farmId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao atualizar o status da fazenda');
+        }
+
+        console.log('Status atualizado com sucesso no backend:', status);
+
+        const farmsMenu = this.$refs.farmsMenu as any;
+        if (farmsMenu && farmsMenu.updateFarmStatus) {
+          farmsMenu.updateFarmStatus(farmId, status);
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar status da fazenda:', error);
+      }
+    },
   },
 
   beforeUnmount() {
@@ -258,5 +250,54 @@ export default defineComponent({
 #map {
   width: 100%;
   height: 100%;
+}
+
+.map-style-control {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.map-style-button {
+  background: white;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-style-button:hover {
+  background: #f5f5f5;
+}
+
+.map-style-options {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  background: white;
+  padding: 15px;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  min-width: 200px;
+}
+
+.map-style-options h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.map-style-options select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  font-size: 14px;
 }
 </style>
