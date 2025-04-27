@@ -30,7 +30,7 @@
       @save="saveDrawing"
       @cancel="cancelDrawing"
     />
-    
+      
     <!-- Modal de Status -->
     <StatusActions 
       :visible="showStatusActions"
@@ -90,6 +90,7 @@ export default defineComponent({
       baseLayers: {} as Record<string, L.TileLayer>,
       currentBaseLayer: null as L.TileLayer | null,
       showStatusActions: false, // Variável para controlar a visibilidade do modal
+      currentBaseLayer: null as L.TileLayer | null,
     };
   },
 
@@ -175,6 +176,7 @@ export default defineComponent({
 
     async saveDrawing() {
       try {
+        // Lógica de salvamento aqui
         // Lógica de salvamento aqui
         alert('Alterações salvas com sucesso!');
         this.isDrawingMode = false;
