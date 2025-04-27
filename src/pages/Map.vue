@@ -30,7 +30,15 @@
       @save="saveDrawing"
       @cancel="cancelDrawing"
     />
-
+    
+    <!-- Modal de Status -->
+    <StatusActions 
+      :visible="showStatusActions"
+      :farmId="selectedArea?.id || 0"
+      @approve="approveFarm" 
+      @reject="rejectFarm"
+    />
+    
     <!-- Botão de controle de mapa melhorado -->
     <div class="map-style-control">
       <button class="map-style-button" @click="showMapStyleOptions = !showMapStyleOptions">
@@ -64,11 +72,12 @@ import FarmsMenu from '@/components/Map/FarmsMenu.vue';
 import DrawingPanel from '@/components/Map/DrawingPanel.vue';
 import MapControls from '@/components/Map/MapControls.vue';
 import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
+import StatusActions from '@/components/Map/StatusActions.vue'; // Importando o StatusActions
 import { Farm, Talhao } from '@/types/farms';
 
 export default defineComponent({
   name: 'MapPage',
-  components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer },
+  components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer, StatusActions }, // Registrando o StatusActions
 
   data() {
     return {
@@ -79,7 +88,8 @@ export default defineComponent({
       showMapStyleOptions: false,
       selectedMapStyle: 'osm',
       baseLayers: {} as Record<string, L.TileLayer>,
-      currentBaseLayer: null as L.TileLayer | null
+      currentBaseLayer: null as L.TileLayer | null,
+      showStatusActions: false, // Variável para controlar a visibilidade do modal
     };
   },
 
@@ -133,6 +143,7 @@ export default defineComponent({
 
     handleAreaSelection(area: Farm & { talhoes: Talhao[] }) {
       this.selectedArea = area;
+      this.showStatusActions = true; // Exibe o modal quando uma área é selecionada
       this.$nextTick(() => {
         if (this.$refs.geoJSONLayer) {
           (this.$refs.geoJSONLayer as any).displayGeoJSON(area);
@@ -156,7 +167,7 @@ export default defineComponent({
 
     async saveDrawing() {
       try {
-        // Implemente a lógica de salvamento aqui
+        // Lógica de salvamento aqui
         alert('Alterações salvas com sucesso!');
         this.isDrawingMode = false;
       } catch (error) {
@@ -167,6 +178,47 @@ export default defineComponent({
 
     cancelDrawing() {
       this.isDrawingMode = false;
+    },
+
+    async approveFarm(farmId: number) {
+      console.log('Fazenda aprovada:', farmId);
+      try {
+        await this.updateFarmStatus(farmId, 'APROVADO');
+        this.showStatusActions = false; // Fecha o modal após aprovação
+      } catch (error) {
+        console.error('Erro ao aprovar fazenda:', error);
+      }
+    },
+
+    async rejectFarm(farmId: number) {
+      console.log('Fazenda recusada:', farmId);
+      try {
+        await this.updateFarmStatus(farmId, 'RECUSADO');
+        this.showStatusActions = false; // Fecha o modal após rejeição
+      } catch (error) {
+        console.error('Erro ao recusar fazenda:', error);
+      }
+    },
+
+    async updateFarmStatus(farmId: number, status: string) {
+      try {
+        const response = await fetch(`http://localhost:8080/areas/${farmId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao atualizar o status da fazenda');
+        }
+
+        console.log('Status da fazenda atualizado com sucesso');
+      } catch (error) {
+        console.error('Erro ao atualizar status da fazenda:', error);
+        throw error; // Para ser capturado nos métodos approve/reject
+      }
     }
   },
 
@@ -189,76 +241,5 @@ export default defineComponent({
 #map {
   width: 100%;
   height: 100%;
-}
-
-/* Estilos para o controle de estilo do mapa */
-.map-style-control {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-}
-
-.map-style-button {
-  background: white;
-  border: 2px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
-  transition: all 0.2s ease;
-}
-
-.map-style-button:hover {
-  background: #f4f4f4;
-  transform: scale(1.05);
-}
-
-.map-style-button svg {
-  transition: all 0.2s ease;
-}
-
-.map-style-button:hover svg {
-  stroke: #0066cc;
-}
-
-.map-style-options {
-  position: absolute;
-  top: 40px;
-  right: 0;
-  background: white;
-  padding: 15px;
-  border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
-  width: 200px;
-}
-
-.map-style-options h4 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  color: #555;
-}
-
-.map-style-options select {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 5px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  font-size: 13px;
-}
-</style>
-
-<style>
-.leaflet-top.leaflet-left {
-  transition: transform 0.3s ease;
-}
-
-.leaflet-top.leaflet-left.shifted-leaflet {
-  transform: translateX(268px);
 }
 </style>
