@@ -15,6 +15,7 @@ export interface Talhao {
   safra?: string;  // Safra
   coordinates?: number[][][];  // Coordenadas GeoJSON, que normalmente é um array de arrays (polígono)
   geojson?: any;  // Dados do GeoJSON
+  produtividadePorAno?: number;
 }
 
 export interface GeoJsonData {
