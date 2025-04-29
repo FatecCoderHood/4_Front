@@ -20,7 +20,7 @@
         <button @click="selectFarm(farm)">
           <span class="status-indicator" :style="{ backgroundColor: farm.statusColor }"></span>
           <div class="farm-button-text">
-            <strong>{{ farm.nome }}</strong><br>
+            <strong>{{ farm.nome }}</strong>
             <small>{{ farm.cidade }}, {{ farm.estado }}</small>
           </div>
           <div class="status-label">
@@ -34,6 +34,18 @@
   <button class="toggle-btn" :class="{ 'btn-closed': !isVisible }" @click="toggleSidebar">
     <svg class="arrow" :style="{ transform: isVisible ? 'rotate(270deg)' : 'rotate(90deg)' }" viewBox="0 0 512 512" width="16" height="16">
       <path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"></path>
+    </svg>
+  </button>
+
+  <button 
+    v-if="selectedFarm" 
+    class="talhoes-btn" 
+    :class="{ 'btn-closed': !isVisible }"
+    @click="showTalhoesOverlay"
+    title="Visualizar talhões"
+  >
+    <svg viewBox="0 0 24 24" width="16" height="16">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
     </svg>
   </button>
 </template>
@@ -50,7 +62,7 @@ interface FarmWithTalhoes extends Farm {
 
 export default defineComponent({
   name: 'FarmsMenu',
-  emits: ['select-area', 'sidebar-toggle'],
+  emits: ['select-area', 'sidebar-toggle', 'show-talhoes'],
 
   data() {
     return {
@@ -59,6 +71,7 @@ export default defineComponent({
       loading: false,
       errorMessage: '',
       searchQuery: '',
+      selectedFarm: null as FarmWithTalhoes | null,
     };
   },
 
@@ -87,7 +100,7 @@ export default defineComponent({
 
   methods: {
     selectFarm(farm: FarmWithTalhoes) {
-      console.log('Fazenda selecionada:', farm);
+      this.selectedFarm = farm;
       this.$emit('select-area', {
         ...farm,
         talhoes: farm.talhoes || [],
@@ -101,8 +114,6 @@ export default defineComponent({
         if (!response.ok) throw new Error(`Erro ${response.status}`);
 
         const data = await response.json();
-        console.log('Dados recebidos:', data);
-
         this.farms = data.map((farm: any) => ({
           ...farm,
           talhoes: farm.talhoes || [],
@@ -118,7 +129,7 @@ export default defineComponent({
       }
     },
 
-    updateFarmStatus(farmId, newStatus) {
+    updateFarmStatus(farmId: number, newStatus: string) {
       const farmIndex = this.farms.findIndex(farm => farm.id === farmId);
       if (farmIndex >= 0) {
         this.farms[farmIndex] = {
@@ -127,7 +138,7 @@ export default defineComponent({
           statusColor: this.getStatusColor(newStatus.toLowerCase()),
           statusLabel: this.getStatusLabel(newStatus.toLowerCase()),
         };
-        this.farms = [...this.farms]; // Force reactivityS
+        this.farms = [...this.farms];
       }
     },
 
@@ -156,6 +167,11 @@ export default defineComponent({
     toggleSidebar() {
       this.isVisible = !this.isVisible;
       this.$emit('sidebar-toggle', this.isVisible);
+    },
+
+    showTalhoesOverlay() {
+      if (!this.selectedFarm) return;
+      this.$emit('show-talhoes', this.selectedFarm.talhoes);
     },
   },
 });
@@ -212,17 +228,20 @@ export default defineComponent({
   flex-direction: column;
   justify-content: center;
   flex-grow: 1;
+  gap: 2px;
 }
 
 .farm-button-text strong {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  margin-bottom: 0;
 }
 
 .farm-button-text small {
-  display: block;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
+  line-height: 1.2;
+  margin-top: 0;
   opacity: 0.8;
-  margin-top: 4px;
 }
 
 .status-indicator {
@@ -315,7 +334,33 @@ export default defineComponent({
   background-color: rgba(255, 255, 255, 0.7);
 }
 
-.farm-button-text br {
-  display: none; /* Remove a quebra de linha */
+.talhoes-btn {
+  position: absolute !important;
+  left: 246px;
+  top: 60px;
+  width: 36px !important;
+  height: 36px !important;
+  background: #F1FAFC;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  z-index: 1002 !important;
+  border: none;
+  cursor: pointer;
+  transition: left 0.3s ease;
+}
+
+.talhoes-btn.btn-closed {
+  left: 10px !important;
+}
+
+.talhoes-btn svg {
+  fill: #333;
+}
+
+.talhoes-btn:hover {
+  background: #e0f0f0;
 }
 </style>
