@@ -33,3 +33,4 @@ export interface Geometry {
   type: string;
   coordinates: any;  // Pode ser um array de coordenadas ou objetos, dependendo do tipo de geometria (p.ex., Polygon, Point)
 }
+
