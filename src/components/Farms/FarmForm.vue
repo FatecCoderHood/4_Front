@@ -48,8 +48,17 @@
   
                 <GeoJsonProcessor 
                   v-model="geoJsonFile" 
+                  label="GeoJSON dos Talhões (Obrigatório)"
                   :required="!editing"
                   @processed="onGeoJsonProcessed"
+                />
+                
+                <GeoJsonProcessor 
+                  v-model="weedsGeoJsonFile" 
+                  label="GeoJSON de Daninhas (Opcional)"
+                  :required="false"
+                  @processed="onWeedsGeoJsonProcessed"
+                  class="mt-4"
                 />
               </v-form>
   
@@ -65,7 +74,7 @@
               <v-data-table
                 v-else
                 :headers="plotHeaders"
-                :items="plots"
+                :items="plotsWithProductivity"
                 class="elevation-1 mb-4"
               >
                 <template v-slot:item.mnTl="{ item }">
@@ -73,6 +82,17 @@
                 </template>
                 <template v-slot:item.areaHaTl="{ item }">
                   {{ item.areaHaTl !== null ? item.areaHaTl + ' ha' : 'N/A' }}
+                </template>
+                <template v-slot:item.productivity="{ item }">
+                  <v-text-field
+                    v-model="item.productivity"
+                    type="number"
+                    suffix="sacas/ano"
+                    dense
+                    outlined
+                    hide-details
+                    @change="updateProductivity(item)"
+                  ></v-text-field>
                 </template>
               </v-data-table>
   
@@ -88,6 +108,7 @@
                   <p><strong>Nome:</strong> {{ farm.nome }}</p>
                   <p><strong>Localização:</strong> {{ farm.cidade }}, {{ farm.estado }}</p>
                   <p><strong>Número de Talhões:</strong> {{ plots.length }}</p>
+                  <p><strong>GeoJSON de Daninhas:</strong> {{ weedsGeoJsonFile ? 'Incluído' : 'Não incluído' }}</p>
                 </v-card-text>
               </v-card>
   
@@ -103,7 +124,7 @@
   </template>
   
   <script lang="ts">
-  import { defineComponent, ref, watch } from 'vue';
+  import { defineComponent, ref, watch, computed } from 'vue';
   import { Farm, Talhao } from '@/types/farm';
   import GeoJsonProcessor from './GeoJsonProcessor.vue';
   
@@ -127,10 +148,13 @@
       const step1Form = ref<any>(null);
       const requiredRule = (v: any) => !!v || 'Campo obrigatório';
       const geoJsonFile = ref<File | null>(null);
+      const weedsGeoJsonFile = ref<File | null>(null);
       const plots = ref<Talhao[]>([]);
       const loadingPlots = ref(false);
       const geoJsonData = ref<any>(null);
+      const weedsGeoJsonData = ref<any>(null);
       const saving = ref(false);
+      const productivityMap = ref<Record<string, number>>({});
   
       const farm = ref<Farm>({
         nome: '',
@@ -143,12 +167,24 @@
         { title: 'ÁREA (ha)', value: 'areaHaTl' },
         { title: 'SOLO', value: 'solo' },
         { title: 'CULTURA', value: 'cultura' },
-        { title: 'SAFRA', value: 'safra' }
+        { title: 'SAFRA', value: 'safra' },
+        { title: 'PRODUTIVIDADE (sacas/ano)', value: 'productivity' }
       ];
+  
+      const plotsWithProductivity = computed(() => {
+        return plots.value.map(plot => ({
+          ...plot,
+          productivity: productivityMap.value[plot.mnTl] || 0
+        }));
+      });
   
       watch(() => props.open, (val) => {
         if (val && props.farmData) {
           farm.value = { ...props.farmData };
+          // Se estiver editando, carregue os dados existentes de produtividade
+          if (props.farmData.productivity) {
+            productivityMap.value = { ...props.farmData.productivity };
+          }
         } else if (!val) {
           resetForm();
         }
@@ -157,8 +193,11 @@
       function resetForm() {
         farm.value = { nome: '', cidade: '', estado: '' };
         geoJsonFile.value = null;
+        weedsGeoJsonFile.value = null;
         plots.value = [];
         geoJsonData.value = null;
+        weedsGeoJsonData.value = null;
+        productivityMap.value = {};
         currentStep.value = 1;
       }
   
@@ -172,12 +211,27 @@
           plots.value = data.plots;
           geoJsonData.value = data.geoJson;
           
+          // Inicializa o mapa de produtividade para os novos talhões
+          data.plots.forEach(plot => {
+            if (!productivityMap.value[plot.mnTl]) {
+              productivityMap.value[plot.mnTl] = 0;
+            }
+          });
+          
           if (!props.editing && data.plots.length > 0) {
             farm.value.nome = data.plots[0].nome || farm.value.nome;
           }
         } finally {
           loadingPlots.value = false;
         }
+      }
+  
+      function onWeedsGeoJsonProcessed(data: { geoJson: any }) {
+        weedsGeoJsonData.value = data.geoJson;
+      }
+  
+      function updateProductivity(item: any) {
+        productivityMap.value[item.mnTl] = Number(item.productivity);
       }
   
       async function validateStep1() {
@@ -189,11 +243,15 @@
         }
       }
   
-      function save() {
+        function save() {
         saving.value = true;
         const payload = {
-          ...farm.value,
-          geojson: geoJsonData.value
+          nome: farm.value.nome,
+          cidade: farm.value.cidade,
+          estado: farm.value.estado,
+          geojson: geoJsonData.value,
+          ervasDaninhasGeojson: weedsGeoJsonData.value, // Nome corrigido
+          produtividadePorAno: productivityMap.value // Nome corrigido
         };
         emit('save', payload);
       }
@@ -204,12 +262,16 @@
         step1Form,
         requiredRule,
         geoJsonFile,
+        weedsGeoJsonFile,
         plots,
+        plotsWithProductivity,
         loadingPlots,
         plotHeaders,
         farm,
         close,
         onGeoJsonProcessed,
+        onWeedsGeoJsonProcessed,
+        updateProductivity,
         validateStep1,
         save,
         saving
