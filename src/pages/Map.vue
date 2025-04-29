@@ -4,6 +4,7 @@
       ref="farmsMenu"
       @select-area="handleAreaSelection"
       @sidebar-toggle="handleSidebarToggle"
+      @show-talhoes="showTalhoesOverlay"
     />
     
     <div id="map" ref="mapContainer"></div>
@@ -31,7 +32,6 @@
       @cancel="cancelDrawing"
     />
     
-    <!-- Modal de Status -->
     <StatusActions 
       :visible="showStatusActions"
       :farmId="selectedArea?.id || 0"
@@ -39,7 +39,6 @@
       @reject="rejectFarm"
     />
     
-    <!-- Botão de controle de mapa melhorado -->
     <div class="map-style-control">
       <button class="map-style-button" @click="showMapStyleOptions = !showMapStyleOptions">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -57,6 +56,37 @@
           <option value="topo">Topográfico</option>
           <option value="dark">Escuro</option>
         </select>
+      </div>
+    </div>
+
+    <!-- Overlay de talhões -->
+    <div v-if="showTalhoesModal" class="talhoes-overlay">
+      <div class="talhoes-container">
+        <div class="talhoes-header">
+          <h3>Talhões - {{ selectedArea?.nome }}</h3>
+          <button @click="showTalhoesModal = false" class="close-btn">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="talhoes-list">
+          <div v-for="talhao in currentTalhoes" :key="talhao.id" class="talhao-item">
+            <div class="talhao-info">
+              <h4>{{ talhao.nome || `Talhão ${talhao.mnTl}` }}</h4>
+              <p>Área: {{ talhao.areaHaTl }} ha</p>
+              <p>Solo: {{ talhao.solo }}</p>
+              <p>Cultura: {{ talhao.cultura }} </p>
+              <p>Safra: {{ talhao.safra }} </p>
+              <p>produtividade: {{ talhao.produtividadePorAno }} sacas/ha </p>
+              <p v-if="talhao.ervasDaninhas && talhao.ervasDaninhas.length > 0">
+                Ervas daninhas: {{ talhao.ervasDaninhas.join(', ') }}
+              </p>
+              <p v-else>Nenhuma erva daninha registrada</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -86,10 +116,12 @@ export default defineComponent({
       isDrawingMode: false,
       sidebarOpen: false,
       showMapStyleOptions: false,
-      selectedMapStyle: 'satellite', // Mapa de satélite como padrão
+      selectedMapStyle: 'satellite',
       baseLayers: {} as Record<string, L.TileLayer>,
       currentBaseLayer: null as L.TileLayer | null,
       showStatusActions: false,
+      showTalhoesModal: false,
+      currentTalhoes: [] as Talhao[],
     };
   },
 
@@ -106,7 +138,6 @@ export default defineComponent({
       
       this.map = L.map(this.$refs.mapContainer as HTMLElement).setView([-15.7801, -47.9292], 5);
       
-      // Inicializa com o Mapa de Satélite como padrão
       this.baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
       }).addTo(this.map);
@@ -117,17 +148,14 @@ export default defineComponent({
     initBaseLayers() {
       if (!this.map) return;
       
-      // OpenStreetMap
       this.baseLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       });
       
-      // Topográfico
       this.baseLayers.topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
       });
       
-      // Escuro
       this.baseLayers.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       });
@@ -143,6 +171,7 @@ export default defineComponent({
 
     handleAreaSelection(area: Farm & { talhoes: Talhao[] }) {
       this.selectedArea = area;
+      this.currentTalhoes = area.talhoes || [];
       this.showStatusActions = true;
 
       this.$nextTick(() => {
@@ -219,8 +248,6 @@ export default defineComponent({
           throw new Error('Erro ao atualizar o status da fazenda');
         }
 
-        console.log('Status atualizado com sucesso no backend:', status);
-
         const farmsMenu = this.$refs.farmsMenu as any;
         if (farmsMenu && farmsMenu.updateFarmStatus) {
           farmsMenu.updateFarmStatus(farmId, status);
@@ -228,6 +255,11 @@ export default defineComponent({
       } catch (error) {
         console.error('Erro ao atualizar status da fazenda:', error);
       }
+    },
+
+    showTalhoesOverlay(talhoes: Talhao[]) {
+      this.currentTalhoes = talhoes;
+      this.showTalhoesModal = true;
     },
   },
 
@@ -299,5 +331,76 @@ export default defineComponent({
   border-radius: 4px;
   border: 1px solid #ddd;
   font-size: 14px;
+}
+
+/* Estilos para o overlay de talhões */
+.talhoes-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.talhoes-container {
+  background: white;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.talhoes-header {
+  padding: 16px;
+  background: #f5f5f5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+}
+
+.talhoes-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.talhoes-list {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.talhao-item {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.talhao-item:last-child {
+  border-bottom: none;
+}
+
+.talhao-info h4 {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.talhao-info p {
+  margin: 4px 0;
+  font-size: 0.9rem;
+  color: #666;
 }
 </style>
