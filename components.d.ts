@@ -27,5 +27,6 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SideBar: typeof import('./src/components/SideBar.vue')['default']
     StatusActions: typeof import('./src/components/Map/StatusActions.vue')['default']
+    WeedsOverlay: typeof import('./src/components/Map/WeedsOverlay.vue')['default']
   }
 }

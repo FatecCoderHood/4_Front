@@ -59,7 +59,14 @@
       </div>
     </div>
 
-    <!-- Overlay de talhões -->
+    <WeedsOverlay 
+      v-if="selectedArea && map" 
+      :map="map"
+      :talhoes="currentTalhoes"
+      :sidebarOpen="sidebarOpen"
+      :weedsData="weedsDataForSelectedArea"
+    />
+
     <div v-if="showTalhoesModal" class="talhoes-overlay">
       <div class="talhoes-container">
         <div class="talhoes-header">
@@ -80,10 +87,6 @@
               <p>Cultura: {{ talhao.cultura }} </p>
               <p>Safra: {{ talhao.safra }} </p>
               <p>produtividade: {{ talhao.produtividadePorAno }} sacas/ha </p>
-              <p v-if="talhao.ervasDaninhas && talhao.ervasDaninhas.length > 0">
-                Ervas daninhas: {{ talhao.ervasDaninhas.join(', ') }}
-              </p>
-              <p v-else>Nenhuma erva daninha registrada</p>
             </div>
           </div>
         </div>
@@ -103,16 +106,32 @@ import DrawingPanel from '@/components/Map/DrawingPanel.vue';
 import MapControls from '@/components/Map/MapControls.vue';
 import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
 import StatusActions from '@/components/Map/StatusActions.vue';
-import { Farm, Talhao } from '@/types/farms';
+import WeedsOverlay from '@/components/Map/WeedsOverlay.vue';
+import type { WeedFeature, Talhao } from '@/types/weeds';
+
+interface Farm {
+  id: number;
+  nome: string;
+  status: string;
+  geometry: any;
+  talhoes?: Talhao[];
+}
 
 export default defineComponent({
   name: 'MapPage',
-  components: { FarmsMenu, DrawingPanel, MapControls, GeoJSONLayer, StatusActions },
+  components: {
+    FarmsMenu,
+    DrawingPanel,
+    MapControls,
+    GeoJSONLayer,
+    StatusActions,
+    WeedsOverlay
+  },
 
   data() {
     return {
       map: null as L.Map | null,
-      selectedArea: null as (Farm & { talhoes: Talhao[] }) | null,
+      selectedArea: null as Farm | null,
       isDrawingMode: false,
       sidebarOpen: false,
       showMapStyleOptions: false,
@@ -122,6 +141,8 @@ export default defineComponent({
       showStatusActions: false,
       showTalhoesModal: false,
       currentTalhoes: [] as Talhao[],
+      weedsDataForSelectedArea: [] as WeedFeature[],
+      allWeedsData: [] as WeedFeature[],
     };
   },
 
@@ -133,45 +154,88 @@ export default defineComponent({
   },
 
   methods: {
-    initMap() {
+    initMap(): void {
       if (!this.$refs.mapContainer) return;
-      
+
       this.map = L.map(this.$refs.mapContainer as HTMLElement).setView([-15.7801, -47.9292], 5);
-      
+
       this.baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
       }).addTo(this.map);
-      
+
       this.currentBaseLayer = this.baseLayers.satellite;
     },
 
-    initBaseLayers() {
+    initBaseLayers(): void {
       if (!this.map) return;
-      
+
       this.baseLayers.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       });
-      
+
       this.baseLayers.topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
       });
-      
+
       this.baseLayers.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       });
     },
 
-    changeMapStyle() {
+    changeMapStyle(): void {
       if (!this.map || !this.currentBaseLayer) return;
-      
+
       this.map.removeLayer(this.currentBaseLayer);
       this.currentBaseLayer = this.baseLayers[this.selectedMapStyle];
       this.map.addLayer(this.currentBaseLayer);
     },
 
-    handleAreaSelection(area: Farm & { talhoes: Talhao[] }) {
+    generateWeedsDataFromTalhoes(talhoes: Talhao[]): WeedFeature[] {
+      if (!talhoes) return [];
+
+      return talhoes.flatMap(talhao => {
+        if (!talhao.ervasDaninhas?.length) return [];
+
+        return talhao.ervasDaninhas.map(erva => ({
+          type: 'Feature',
+          properties: {
+            CLASSE: erva,
+            AREA_M2: talhao.areaHaTl ? talhao.areaHaTl * 10000 : 0,
+            NM_TL: talhao.mnTl || talhao.id
+          },
+          geometry: this.createWeedGeometry(talhao)
+        }));
+      });
+    },
+
+    createWeedGeometry(talhao: Talhao): any {
+      if ((talhao as any).geometry) {
+        return (talhao as any).geometry;
+      }
+
+      const center = talhao.coordinates || { lat: -15.7801, lng: -47.9292 };
+      const offset = 0.0002;
+
+      return {
+        type: 'MultiPolygon',
+        coordinates: [
+          [
+            [
+              [center.lng - offset, center.lat - offset],
+              [center.lng + offset, center.lat - offset],
+              [center.lng + offset, center.lat + offset],
+              [center.lng - offset, center.lat + offset],
+              [center.lng - offset, center.lat - offset]
+            ]
+          ]
+        ]
+      };
+    },
+
+    handleAreaSelection(area: Farm): void {
       this.selectedArea = area;
       this.currentTalhoes = area.talhoes || [];
+      this.weedsDataForSelectedArea = this.generateWeedsDataFromTalhoes(area.talhoes);
       this.showStatusActions = true;
 
       this.$nextTick(() => {
@@ -186,21 +250,21 @@ export default defineComponent({
       });
     },
 
-    handleSidebarToggle(isOpen: boolean) {
+    handleSidebarToggle(isOpen: boolean): void {
       this.sidebarOpen = isOpen;
       const controls = document.querySelector('.leaflet-top.leaflet-left');
       controls?.classList.toggle('shifted-leaflet', isOpen);
     },
 
-    toggleDrawingMode(isEditing: boolean) {
+    toggleDrawingMode(isEditing: boolean): void {
       this.isDrawingMode = isEditing;
     },
 
-    handleEditComplete(geojson: any) {
+    handleEditComplete(geojson: any): void {
       console.log('GeoJSON editado:', geojson);
     },
 
-    async saveDrawing() {
+    async saveDrawing(): Promise<void> {
       try {
         alert('Alterações salvas com sucesso!');
         this.isDrawingMode = false;
@@ -210,11 +274,11 @@ export default defineComponent({
       }
     },
 
-    cancelDrawing() {
+    cancelDrawing(): void {
       this.isDrawingMode = false;
     },
 
-    async approveFarm(farmId: number) {
+    async approveFarm(farmId: number): Promise<void> {
       console.log('Fazenda aprovada:', farmId);
       try {
         await this.updateFarmStatus(farmId, 'APROVADO');
@@ -224,7 +288,7 @@ export default defineComponent({
       }
     },
 
-    async rejectFarm(farmId: number) {
+    async rejectFarm(farmId: number): Promise<void> {
       console.log('Fazenda recusada:', farmId);
       try {
         await this.updateFarmStatus(farmId, 'RECUSADO');
@@ -234,7 +298,7 @@ export default defineComponent({
       }
     },
 
-    async updateFarmStatus(farmId: number, status: string) {
+    async updateFarmStatus(farmId: number, status: string): Promise<void> {
       try {
         const response = await fetch(`http://localhost:8080/areas/${farmId}/status`, {
           method: 'PUT',
@@ -257,7 +321,7 @@ export default defineComponent({
       }
     },
 
-    showTalhoesOverlay(talhoes: Talhao[]) {
+    showTalhoesOverlay(talhoes: Talhao[]): void {
       this.currentTalhoes = talhoes;
       this.showTalhoesModal = true;
     },
@@ -272,7 +336,9 @@ export default defineComponent({
 });
 </script>
 
+
 <style scoped>
+/* Estilos permanecem exatamente os mesmos */
 .map-page {
   position: relative;
   width: 100%;
@@ -333,7 +399,6 @@ export default defineComponent({
   font-size: 14px;
 }
 
-/* Estilos para o overlay de talhões */
 .talhoes-overlay {
   position: fixed;
   top: 0;
