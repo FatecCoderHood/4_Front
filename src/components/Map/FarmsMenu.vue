@@ -136,7 +136,7 @@ export default defineComponent({
         'em_analise': 'grey',
         'ativo': '#4CAF50',
         'inativo': '#f44336',
-        'aprovado': '#008CBA',
+        'aprovado': '#03bd00',
         'recusado': '#FF6347',
       };
       return statusMap[status.toLowerCase()] || '';
@@ -313,5 +313,9 @@ export default defineComponent({
   padding: 2px 6px;
   border-radius: 3px;
   background-color: rgba(255, 255, 255, 0.7);
+}
+
+.farm-button-text br {
+  display: none; /* Remove a quebra de linha */
 }
 </style>

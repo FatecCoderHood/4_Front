@@ -56,7 +56,7 @@ import FarmViewDialog from '@/components/Farms/FarmViewDialog.vue';
 // Configuração do axios para apontar para o backend correto
 const api = axios.create({
   baseURL: 'http://localhost:8080', // Altere para a porta do seu backend Spring
-  timeout: 5000,
+  timeout: 50000,
 });
 
 interface Area {
