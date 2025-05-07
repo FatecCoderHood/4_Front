@@ -14,3 +14,9 @@ import { storeToRefs } from 'pinia'
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore) // Makes state reactive
 </script>
+
+<style>
+  body {
+    font-family: 'Roboto', sans-serif !important;
+  }
+</style>
