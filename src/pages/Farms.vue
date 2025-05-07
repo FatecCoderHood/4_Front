@@ -48,9 +48,9 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import axios, { AxiosError } from 'axios';
-import FarmList from '@/components/farms/FarmList.vue';
-import FarmForm from '@/components/farms/FarmForm.vue';
-import FarmDeleteDialog from '@/components/farms/FarmDeleteDialog.vue';
+import FarmList from '@/components/Farms/FarmList.vue';
+import FarmForm from '@/components/Farms/FarmForm.vue';
+import FarmDeleteDialog from '@/components/Farms/FarmDeleteDialog.vue';
 import FarmViewDialog from '@/components/Farms/FarmViewDialog.vue';
 
 // Configuração do axios para apontar para o backend correto
