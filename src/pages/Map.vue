@@ -5,6 +5,7 @@
       @select-area="handleAreaSelection"
       @sidebar-toggle="handleSidebarToggle"
       @show-talhoes="showTalhoesOverlay"
+      @show-status-modal="showTalhaoStatusModal"
     />
     
     <div id="map" ref="mapContainer"></div>
@@ -34,9 +35,9 @@
     
     <StatusActions 
       :visible="showStatusActions"
-      :farmId="selectedArea?.id || 0"
-      @approve="approveFarm" 
-      @reject="rejectFarm"
+      :talhao="selectedTalhao"
+      @status-update="updateTalhaoStatus"
+      @update:visible="showStatusActions = $event"
     />
     
     <div class="map-style-control">
@@ -86,7 +87,17 @@
               <p>Solo: {{ talhao.solo }}</p>
               <p>Cultura: {{ talhao.cultura }} </p>
               <p>Safra: {{ talhao.safra }} </p>
-              <p>produtividade: {{ talhao.produtividadePorAno }} sacas/ha </p>
+              <p>Produtividade: {{ talhao.produtividadePorAno }} sacas/ha </p>
+              <p>
+                Status: 
+                <button 
+                  @click="showTalhaoStatusModal(talhao)" 
+                  class="status-button"
+                  :style="{ backgroundColor: getStatusColor(talhao.status) }"
+                >
+                  {{ getStatusLabel(talhao.status) }}
+                </button>
+              </p>
             </div>
           </div>
         </div>
@@ -107,14 +118,23 @@ import MapControls from '@/components/Map/MapControls.vue';
 import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
 import StatusActions from '@/components/Map/StatusActions.vue';
 import WeedsOverlay from '@/components/Map/WeedsOverlay.vue';
-import type { WeedFeature, Talhao } from '@/types/weeds';
+import type { Farm, Talhao, WeedFeature } from '@/types/farms';
 
-interface Farm {
-  id: number;
-  nome: string;
-  status: string;
-  geometry: any;
-  talhoes?: Talhao[];
+interface MapPageData {
+  map: L.Map | null;
+  selectedArea: Farm | null;
+  isDrawingMode: boolean;
+  sidebarOpen: boolean;
+  showMapStyleOptions: boolean;
+  selectedMapStyle: string;
+  baseLayers: Record<string, L.TileLayer>;
+  currentBaseLayer: L.TileLayer | null;
+  showStatusActions: boolean;
+  showTalhoesModal: boolean;
+  currentTalhoes: Talhao[];
+  weedsDataForSelectedArea: WeedFeature[];
+  allWeedsData: WeedFeature[];
+  selectedTalhao: Talhao | null;
 }
 
 export default defineComponent({
@@ -128,21 +148,22 @@ export default defineComponent({
     WeedsOverlay
   },
 
-  data() {
+  data(): MapPageData {
     return {
-      map: null as L.Map | null,
-      selectedArea: null as Farm | null,
+      map: null,
+      selectedArea: null,
       isDrawingMode: false,
       sidebarOpen: false,
       showMapStyleOptions: false,
       selectedMapStyle: 'satellite',
-      baseLayers: {} as Record<string, L.TileLayer>,
-      currentBaseLayer: null as L.TileLayer | null,
+      baseLayers: {},
+      currentBaseLayer: null,
       showStatusActions: false,
       showTalhoesModal: false,
-      currentTalhoes: [] as Talhao[],
-      weedsDataForSelectedArea: [] as WeedFeature[],
-      allWeedsData: [] as WeedFeature[],
+      currentTalhoes: [],
+      weedsDataForSelectedArea: [],
+      allWeedsData: [],
+      selectedTalhao: null,
     };
   },
 
@@ -236,7 +257,6 @@ export default defineComponent({
       this.selectedArea = area;
       this.currentTalhoes = area.talhoes || [];
       this.weedsDataForSelectedArea = this.generateWeedsDataFromTalhoes(area.talhoes);
-      this.showStatusActions = true;
 
       this.$nextTick(() => {
         if (this.$refs.geoJSONLayer) {
@@ -278,53 +298,89 @@ export default defineComponent({
       this.isDrawingMode = false;
     },
 
-    async approveFarm(farmId: number): Promise<void> {
-      console.log('Fazenda aprovada:', farmId);
-      try {
-        await this.updateFarmStatus(farmId, 'APROVADO');
-        this.showStatusActions = false;
-      } catch (error) {
-        console.error('Erro ao aprovar fazenda:', error);
-      }
-    },
-
-    async rejectFarm(farmId: number): Promise<void> {
-      console.log('Fazenda recusada:', farmId);
-      try {
-        await this.updateFarmStatus(farmId, 'RECUSADO');
-        this.showStatusActions = false;
-      } catch (error) {
-        console.error('Erro ao recusar fazenda:', error);
-      }
-    },
-
-    async updateFarmStatus(farmId: number, status: string): Promise<void> {
-      try {
-        const response = await fetch(`http://localhost:8080/areas/${farmId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Erro ao atualizar o status da fazenda');
-        }
-
-        const farmsMenu = this.$refs.farmsMenu as any;
-        if (farmsMenu && farmsMenu.updateFarmStatus) {
-          farmsMenu.updateFarmStatus(farmId, status);
-        }
-      } catch (error) {
-        console.error('Erro ao atualizar status da fazenda:', error);
-      }
-    },
-
     showTalhoesOverlay(talhoes: Talhao[]): void {
       this.currentTalhoes = talhoes;
       this.showTalhoesModal = true;
     },
+
+    showTalhaoStatusModal(talhao: Talhao): void {
+      this.selectedTalhao = talhao;
+      this.showStatusActions = true;
+      this.showTalhoesModal = false;
+    },
+
+    getStatusColor(status: string): string {
+      const statusColors: Record<string, string> = {
+        'EM_ABERTO': '#95a5a6',
+        'APROVADO': '#2ecc71',
+        'RECUSADO': '#e74c3c',
+        'EM_ANALISE': '#f39c12'
+      };
+      return statusColors[status] || '#95a5a6';
+    },
+
+    getStatusLabel(status: string): string {
+      const labels: Record<string, string> = {
+        'EM_ABERTO': 'Em Aberto',
+        'APROVADO': 'Aprovado',
+        'RECUSADO': 'Recusado',
+        'EM_ANALISE': 'Em Análise'
+      };
+      return labels[status] || status;
+    },
+
+    async updateTalhaoStatus(newStatus: string): Promise<void> {
+      if (!this.selectedArea || !this.selectedTalhao) return;
+      
+      try {
+        const response = await fetch(
+          `http://localhost:8080/areas/${this.selectedArea.id}/talhoes/${this.selectedTalhao.id}/status`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: newStatus }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Erro ao atualizar o status do talhão');
+        }
+
+        // Atualiza o status localmente
+        if (this.selectedTalhao) {
+          this.selectedTalhao.status = newStatus;
+        }
+
+        // Atualiza a lista de talhões
+        this.currentTalhoes = this.currentTalhoes.map(t => 
+          t.id === this.selectedTalhao?.id ? { ...t, status: newStatus } : t
+        );
+
+        // Atualiza o status da área no FarmsMenu
+        const farmsMenu = this.$refs.farmsMenu as any;
+        if (farmsMenu && farmsMenu.updateFarmStatus) {
+          // Primeiro atualiza o status dos talhões na fazenda selecionada
+          const updatedTalhoes = this.selectedArea.talhoes?.map(t => 
+            t.id === this.selectedTalhao?.id ? { ...t, status: newStatus } : t
+          ) || [];
+          
+          // Atualiza a fazenda com os talhões modificados
+          this.selectedArea.talhoes = updatedTalhoes;
+          
+          // Chama a API para obter o status atualizado da área
+          const areaResponse = await fetch(`http://localhost:8080/areas/${this.selectedArea.id}`);
+          if (areaResponse.ok) {
+            const updatedArea = await areaResponse.json();
+            farmsMenu.updateFarmStatus(updatedArea.id, updatedArea.status);
+          }
+        }
+
+      } catch (error) {
+        console.error('Erro ao atualizar status do talhão:', error);
+      }
+    }
   },
 
   beforeUnmount() {
@@ -336,9 +392,7 @@ export default defineComponent({
 });
 </script>
 
-
 <style scoped>
-/* Estilos permanecem exatamente os mesmos */
 .map-page {
   position: relative;
   width: 100%;
@@ -467,5 +521,18 @@ export default defineComponent({
   margin: 4px 0;
   font-size: 0.9rem;
   color: #666;
+}
+
+.status-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.status-button:hover {
+  opacity: 0.9;
 }
 </style>

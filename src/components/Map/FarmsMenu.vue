@@ -41,7 +41,7 @@
     v-if="selectedFarm" 
     class="talhoes-btn" 
     :class="{ 'btn-closed': !isVisible }"
-    @click="showTalhoesOverlay"
+    @click="showTalhoes"
     title="Visualizar talhões"
   >
     <svg viewBox="0 0 24 24" width="16" height="16">
@@ -62,7 +62,7 @@ interface FarmWithTalhoes extends Farm {
 
 export default defineComponent({
   name: 'FarmsMenu',
-  emits: ['select-area', 'sidebar-toggle', 'show-talhoes'],
+  emits: ['select-area', 'sidebar-toggle', 'show-talhoes', 'show-status-modal'],
 
   data() {
     return {
@@ -117,9 +117,9 @@ export default defineComponent({
         this.farms = data.map((farm: any) => ({
           ...farm,
           talhoes: farm.talhoes || [],
-          status: farm.status || 'em_analise',
-          statusColor: this.getStatusColor(farm.status || 'em_analise'),
-          statusLabel: this.getStatusLabel(farm.status || 'em_analise'),
+          status: farm.status || 'EM_ANALISE',
+          statusColor: this.getStatusColor(farm.status || 'EM_ANALISE'),
+          statusLabel: this.getStatusLabel(farm.status || 'EM_ANALISE'),
         }));
       } catch (error) {
         this.errorMessage = 'Erro ao carregar fazendas.';
@@ -132,36 +132,48 @@ export default defineComponent({
     updateFarmStatus(farmId: number, newStatus: string) {
       const farmIndex = this.farms.findIndex(farm => farm.id === farmId);
       if (farmIndex >= 0) {
-        this.farms[farmIndex] = {
-          ...this.farms[farmIndex],
+        // Cria um novo array para forçar a reatividade
+        const updatedFarms = [...this.farms];
+        updatedFarms[farmIndex] = {
+          ...updatedFarms[farmIndex],
           status: newStatus,
-          statusColor: this.getStatusColor(newStatus.toLowerCase()),
-          statusLabel: this.getStatusLabel(newStatus.toLowerCase()),
+          statusColor: this.getStatusColor(newStatus),
+          statusLabel: this.getStatusLabel(newStatus),
         };
-        this.farms = [...this.farms];
+        
+        // Atribui o novo array para disparar a reatividade
+        this.farms = updatedFarms;
+        
+        // Se for a fazenda selecionada, atualiza também
+        if (this.selectedFarm?.id === farmId) {
+          this.selectedFarm = {
+            ...this.selectedFarm,
+            status: newStatus,
+            statusColor: this.getStatusColor(newStatus),
+            statusLabel: this.getStatusLabel(newStatus),
+          };
+        }
       }
     },
 
     getStatusColor(status: string) {
       const statusMap: Record<string, string> = {
-        'em_analise': 'grey',
-        'ativo': '#4CAF50',
-        'inativo': '#f44336',
-        'aprovado': '#03bd00',
-        'recusado': '#FF6347',
+        'em_analise': '#f39c12',
+        'em_aberto': '#95a5a6',
+        'aprovado': '#2ecc71',
+        'recusado': '#e74c3c',
       };
-      return statusMap[status.toLowerCase()] || '';
+      return statusMap[status.toLowerCase()] || '#95a5a6';
     },
 
     getStatusLabel(status: string) {
       const labelMap: Record<string, string> = {
-        'em_analise': 'Em análise',
-        'ativo': 'Ativo',
-        'inativo': 'Inativo',
+        'em_analise': 'Em Análise',
+        'em_aberto': 'Em Aberto',
         'aprovado': 'Aprovado',
         'recusado': 'Recusado',
       };
-      return labelMap[status.toLowerCase()] || '';
+      return labelMap[status.toLowerCase()] || status;
     },
 
     toggleSidebar() {
@@ -169,9 +181,13 @@ export default defineComponent({
       this.$emit('sidebar-toggle', this.isVisible);
     },
 
-    showTalhoesOverlay() {
+    showTalhoes() {
       if (!this.selectedFarm) return;
       this.$emit('show-talhoes', this.selectedFarm.talhoes);
+    },
+
+    showTalhaoStatusModal(talhao: Talhao) {
+      this.$emit('show-status-modal', talhao);
     },
   },
 });
