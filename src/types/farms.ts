@@ -7,15 +7,17 @@ export interface Farm {
 }
 
 export interface Talhao {
-  id?: string;
-  mnTl?: number;  // Mn TL do talhão
-  areaHaTl?: number;  // Área do talhão em hectares
-  solo?: string;  // Tipo de solo
-  cultura?: string;  // Cultura plantada
-  safra?: string;  // Safra
-  coordinates?: number[][][];  // Coordenadas GeoJSON, que normalmente é um array de arrays (polígono)
-  geojson?: any;  // Dados do GeoJSON
+  id: number;  // Alterado de string para number
+  mnTl?: number;
+  areaHaTl?: number;
+  solo?: string;
+  cultura?: string;
+  safra?: string;
+  coordinates?: number[][][];
+  geojson?: any;
   produtividadePorAno?: number;
+  status?: string;
+  ervasDaninhas?: string[];
 }
 
 export interface GeoJsonData {
