@@ -57,20 +57,27 @@
                             class="custom-textfield"
                           ></v-text-field>
                           <v-select
-                            v-model="farm.estado"
-                            :items="states"
+                            v-model="estadoSelecionado"
+                            :items="estado"
                             label="Estado"
+                            item-title="text"
+                            item-value="value"                            
                             :rules="[requiredRule]"
                             hide-details
                             class="custom-textfield"
                           ></v-select>
-                          <v-text-field
-                            v-model="farm.cidade"
+                          <v-autocomplete
+                            v-model="cidadeSelecionada"
+                            :items="cidade"
+                            item-title="text"
+                            item-value="value"                            
                             label="Cidade"
                             :rules="[requiredRule]"
                             hide-details
                             class="custom-textfield"
-                          ></v-text-field>
+                            :disabled="!estadoSelecionado"
+                            clearable                          
+                          ></v-autocomplete>
                       </v-col>
                     </v-row>
                   </div>
@@ -135,7 +142,8 @@
   </template>
   
   <script lang="ts">
-  import { defineComponent, ref, watch, computed } from 'vue';
+  import { defineComponent, ref, watch, computed, onMounted } from 'vue';
+  import axios from 'axios';
   import { Farm, Talhao } from './types/farms';
   import GeoJsonProcessor from './GeoJsonProcessor.vue';
   import StepperFooter from './StepperFooter.vue';
@@ -152,11 +160,11 @@
     },
     emits: ['close', 'save'],
     setup(props, { emit }) {
-      const states = [
-        'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-        'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-        'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-      ];
+      const estado = ref([]);
+      const cidade = ref([]);
+
+      const estadoSelecionado = ref(null);
+      const cidadeSelecionada = ref(null);
   
       const currentStep = ref(1);
       const step1Form = ref<any>(null);
@@ -211,6 +219,28 @@
         } else if (!val) {
           resetForm();
         }
+      });
+
+      watch(estadoSelecionado, async (novoEstado) => {
+        cidadeSelecionada.value = null;
+        farm.value.estado = novoEstado;
+        if (novoEstado) {
+          const response = await axios.get(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${novoEstado}/municipios`);
+          cidade.value = response.data.map((c) => ({ text: c.nome, value: c.nome,}));
+        } else {
+          cidade.value = [];
+        }
+      });
+
+      watch(cidadeSelecionada, (novaCidade) => {
+        farm.value.cidade = novaCidade;
+      });
+
+      onMounted(async () => {
+        const response = await axios.get('https://servicodados.ibge.gov.br/api/v1/localidades/estados');
+        estado.value = response.data
+          .map((e) => ({text: e.nome, value: e.sigla,}))
+          .sort((a, b) => a.text.localeCompare(b.text));
       });
   
       function resetForm() {
@@ -275,8 +305,8 @@
         saving.value = true;
         const payload = {
           nome: farm.value.nome,
-          cidade: farm.value.cidade,
-          estado: farm.value.estado,
+          estado: estadoSelecionado.value,
+          cidade: cidadeSelecionada.value,
           geojson: geoJsonData.value,
           ervasDaninhasGeojson: weedsGeoJsonData.value, // Nome corrigido
           produtividadePorAno: productivityMap.value // Nome corrigido
@@ -288,7 +318,10 @@
       }
   
       return {
-        states,
+        estado,
+        cidade,
+        estadoSelecionado,
+        cidadeSelecionada,
         currentStep,
         step1Form,
         requiredRule,
