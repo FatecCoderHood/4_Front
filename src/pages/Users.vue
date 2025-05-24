@@ -37,10 +37,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import UserList from '@/components/Users/UserList.vue';
+import UserForm from '@/components/Users/UserForm.vue';
+import UserDeleteDialog from '@/components/Users/UserDeleteDialog.vue';
 import axios from 'axios';
-import UserList from '@/components/UserList.vue';
-import UserForm from '@/components/UserForm.vue';
-import UserDeleteDialog from '@/components/UserDeleteDialog.vue';
 
 export interface User {
   id?: string;

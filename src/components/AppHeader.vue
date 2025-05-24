@@ -11,7 +11,7 @@
       </router-link>
       <div class="d-flex flex-column">
         <p class="title text-uppercase">GeoHood</p>
-        <p class="sub-title text-lowercase">Tecnologia Agrícola</p>
+        <p class="sub-title">Tecnologia Agrícola</p>
       </div>
     </div>
 
