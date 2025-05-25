@@ -99,12 +99,34 @@ export default defineComponent({
   },
 
   methods: {
-    selectFarm(farm: FarmWithTalhoes) {
-      this.selectedFarm = farm;
-      this.$emit('select-area', {
-        ...farm,
-        talhoes: farm.talhoes || [],
-      });
+    async selectFarm(farm: FarmWithTalhoes)
+    {
+      try {
+        const response = await fetch(`http://localhost:8080/areas/${farm.id}`);
+        if (!response.ok) throw new Error(`Erro ${response.status}`);
+
+        const data = await response.json();
+        
+        farm = {
+          id: data.id,
+          nome: data.nome,
+          estado: data.estado,
+          cidade: data.cidade,
+          talhoes: data.talhoes || [],
+          status: data.status || 'EM_ANALISE',
+          statusColor: this.getStatusColor(data.status || 'EM_ANALISE'),
+          statusLabel: this.getStatusLabel(data.status || 'EM_ANALISE'),
+        }
+
+        this.selectedFarm = farm;
+        this.$emit('select-area', {
+          ...farm,
+          talhoes: farm.talhoes || [],
+        });
+      } catch (error) {
+        this.errorMessage = 'Erro ao carregar fazendas.';
+        console.error(error);
+      } 
     },
 
     async fetchFarms() {
