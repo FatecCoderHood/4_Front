@@ -80,8 +80,27 @@ export default defineComponent({
       'EM_ABERTO': '#95a5a6'
     };
 
-    function updateChartData() {
-      const farm = props.farms.find((f: any) => f.id === selectedFarmId.value);
+    async function updateChartData() {
+      let farm = props.farms.find((f: any) => f.id === selectedFarmId.value);
+
+      try {
+        const response = await fetch(`http://localhost:8080/areas/${selectedFarmId.value}`);
+        if (!response.ok) throw new Error(`Erro ${response.status}`);
+
+        const data = await response.json();
+        
+        farm = {
+          id: data.id,
+          nome: data.nome,
+          estado: data.estado,
+          cidade: data.cidade,
+          talhoes: data.talhoes || [],
+          status: data.status || 'EM_ANALISE',
+        }
+      } catch (error) {
+        console.error(error);
+      } 
+
       if (!farm || !farm.talhoes) {
         chartData.value = null;
         return;
