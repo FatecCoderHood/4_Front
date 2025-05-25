@@ -40,7 +40,7 @@ import { defineComponent } from 'vue';
 import UserList from '@/components/Users/UserList.vue';
 import UserForm from '@/components/Users/UserForm.vue';
 import UserDeleteDialog from '@/components/Users/UserDeleteDialog.vue';
-import axios from 'axios';
+import api from '@/utils/api'; // Usar a instância configurada do axios
 
 export interface User {
   id?: string;
@@ -103,7 +103,7 @@ export default defineComponent({
   methods: {
     async fetchUsers(): Promise<void> {
       try {
-        const response = await axios.get<User[]>("http://localhost:8080/users");
+        const response = await api.get<User[]>("/users");
         this.users = response.data;
       } catch (error) {
         console.error("Erro ao buscar usuários:", error);
@@ -131,7 +131,7 @@ export default defineComponent({
 
     async deleteItemConfirm(): Promise<void> {
       try {
-        await axios.delete(`http://localhost:8080/users/${this.editedItem.id}`);
+        await api.delete(`/users/${this.editedItem.id}`);
         this.users.splice(this.editedIndex, 1);
         this.showSnackbar("Usuário excluído com sucesso", "success");
       } catch (error) {
@@ -158,11 +158,11 @@ export default defineComponent({
     async save(): Promise<void> {
       try {
         if (this.editedIndex > -1) {
-          await axios.put(`http://localhost:8080/users/${this.editedItem.id}`, this.editedItem);
+          await api.put(`/users/${this.editedItem.id}`, this.editedItem);
           Object.assign(this.users[this.editedIndex], this.editedItem);
           this.showSnackbar("Usuário atualizado com sucesso", "success");
         } else {
-          const response = await axios.post<User>("http://localhost:8080/users", this.editedItem);
+          const response = await api.post<User>("/users", this.editedItem);
           this.users.push(response.data);
           this.showSnackbar("Usuário criado com sucesso", "success");
         }
