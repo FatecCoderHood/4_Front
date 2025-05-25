@@ -32,6 +32,7 @@ import {
   ArcElement,
   type ChartOptions,
 } from 'chart.js';
+import api from '@/utils/api'; // Importar a instância configurada do axios
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement);
 
@@ -84,10 +85,8 @@ export default defineComponent({
       let farm = props.farms.find((f: any) => f.id === selectedFarmId.value);
 
       try {
-        const response = await fetch(`http://localhost:8080/areas/${selectedFarmId.value}`);
-        if (!response.ok) throw new Error(`Erro ${response.status}`);
-
-        const data = await response.json();
+        const response = await api.get(`/areas/${selectedFarmId.value}`);
+        const data = response.data;
         
         farm = {
           id: data.id,

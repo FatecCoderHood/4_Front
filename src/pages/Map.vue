@@ -34,6 +34,7 @@
     />
     
     <StatusActions 
+      v-if="selectedTalhao"
       :visible="showStatusActions"
       :talhao="selectedTalhao"
       @status-update="updateTalhaoStatus"
@@ -118,6 +119,7 @@ import MapControls from '@/components/Map/MapControls.vue';
 import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
 import StatusActions from '@/components/Map/StatusActions.vue';
 import WeedsOverlay from '@/components/Map/WeedsOverlay.vue';
+import api from '@/utils/api';
 import type { Farm, Talhao, WeedFeature } from '@/types/farms';
 
 interface MapPageData {
@@ -333,20 +335,10 @@ export default defineComponent({
       if (!this.selectedArea || !this.selectedTalhao) return;
       
       try {
-        const response = await fetch(
-          `http://localhost:8080/areas/${this.selectedArea.id}/talhoes/${this.selectedTalhao.id}/status`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ status: newStatus }),
-          }
+        await api.put(
+          `/areas/${this.selectedArea.id}/talhoes/${this.selectedTalhao.id}/status`,
+          { status: newStatus }
         );
-
-        if (!response.ok) {
-          throw new Error('Erro ao atualizar o status do talhão');
-        }
 
         // Atualiza o status localmente
         if (this.selectedTalhao) {
@@ -370,11 +362,9 @@ export default defineComponent({
           this.selectedArea.talhoes = updatedTalhoes;
           
           // Chama a API para obter o status atualizado da área
-          const areaResponse = await fetch(`http://localhost:8080/areas/${this.selectedArea.id}`);
-          if (areaResponse.ok) {
-            const updatedArea = await areaResponse.json();
-            farmsMenu.updateFarmStatus(updatedArea.id, updatedArea.status);
-          }
+          const areaResponse = await api.get(`/areas/${this.selectedArea.id}`);
+          const updatedArea = areaResponse.data;
+          farmsMenu.updateFarmStatus(updatedArea.id, updatedArea.status);
         }
 
       } catch (error) {

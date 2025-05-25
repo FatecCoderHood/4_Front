@@ -53,6 +53,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { Farm, Talhao } from '@/types/farms';
+import api from '@/utils/api'; // Usar a instância configurada do axios
 
 interface FarmWithTalhoes extends Farm {
   talhoes: Talhao[];
@@ -102,10 +103,8 @@ export default defineComponent({
     async selectFarm(farm: FarmWithTalhoes)
     {
       try {
-        const response = await fetch(`http://localhost:8080/areas/${farm.id}`);
-        if (!response.ok) throw new Error(`Erro ${response.status}`);
-
-        const data = await response.json();
+        const response = await api.get(`/areas/${farm.id}`);
+        const data = response.data;
         
         farm = {
           id: data.id,
@@ -132,10 +131,8 @@ export default defineComponent({
     async fetchFarms() {
       this.loading = true;
       try {
-        const response = await fetch('http://localhost:8080/areas');
-        if (!response.ok) throw new Error(`Erro ${response.status}`);
-
-        const data = await response.json();
+        const response = await api.get('/areas');
+        const data = response.data;
         this.farms = data.map((farm: any) => ({
           ...farm,
           talhoes: farm.talhoes || [],
