@@ -10,7 +10,6 @@ const api = axios.create({
 // Interceptor para adicionar logs de requisições (opcional, para debug)
 api.interceptors.request.use(
   (config) => {
-    console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`)
     return config
   },
   (error) => {
@@ -23,7 +22,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
-      console.error('Authentication error:', error.response.status)
       
       // Clear auth store and redirect to login
       import('@/stores/auth').then(({ useAuthStore }) => {
