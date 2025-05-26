@@ -5,7 +5,10 @@
         <h2>Dashboard</h2>
       </v-col>
     </v-row>
-  <DashboardBody :users="analysts" :farms="farms"/>
+    <DashboardBody 
+      :users="analysts" 
+      :farms="farms" 
+    />
   </v-container>
 </template>
 
@@ -13,16 +16,15 @@
 import DashboardBody from '@/components/Dashboard/DashboardBody.vue';
 import api from '@/utils/api'; // Usar a instância configurada do axios
 import { onMounted, ref } from 'vue';
-import Users, { type User } from './Users.vue';
+import type { Farm, User } from '@/types/farms';
 
-const farms = ref<any[]>([]);
-const users = ref<any[]>([]);
-const analysts = ref<any[]>([])
+const farms = ref<Farm[]>([]);
+const analysts = ref<User[]>([]);
 
 async function fetchFarms() {
   try {
     const response = await api.get('/areas');
-    farms.value = response.data.map((farm: any) => ({
+    farms.value = response.data.map((farm: Farm) => ({
        ...farm,
       talhoes: farm.talhoes || []
      }));
@@ -33,11 +35,10 @@ async function fetchFarms() {
 
 async function fetchUsers() {
   try {
-    const response = await api.get<User[]>('/users');
-    users.value = response.data;
-    analysts.value = users.value.filter(user => user.tipoAcesso === 'ANALISTA');
+    const response = await api.get('/users/analistas/estatisticas');
+    analysts.value = response.data;
     } catch (error){
-      console.error('Erro ao buscar usuários:', error);
+      console.error('Erro ao buscar analistas:', error);
     }
   }
 
