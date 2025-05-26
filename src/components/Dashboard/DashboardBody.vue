@@ -1,47 +1,53 @@
 <template>
-    <v-container style="background-color: #D9D9D9; border-radius: 8px; height: 100vh; max-height: max-content;">
-        <v-row>
-            <v-col cols="12" md="6" lg="4" class="me-16">
-                <v-list class = "ranking-list">
-                    <div class="ranking-header">
-                        <div class="rank-title">Ranking Analista</div>
-                    </div>
-                    <div class="list-header">
-                      <div class="list-cell text1-ajust">Nome</div>
-                      <div class="list-cell">Horas Analisadas</div>
-                      <div class="list-cell">Quantidade (Talhões)</div>
-                    </div>
-                    <v-list-item v-for="(analysts, index) in usersComNumeracao" :key="index" class="v-list-item">
-                      <div class="list-cell"> {{ analysts.numeroNomeAnalyst }} {{ analysts.nome }}</div>
-                      <div class="list-cell"></div>
-                      <div class="list-cell"></div>
-                    </v-list-item>
-                </v-list>
-            </v-col>
+  <v-container style="background-color: #D9D9D9; border-radius: 8px; height: 100vh; max-height: max-content;">
+    <v-row>
+      <v-col cols="12" md="6" lg="4" class="me-16">
+        <v-list class="ranking-list">
+          <div class="ranking-header">
+            <div class="rank-title">Ranking Analista</div>
+          </div>
+          <div class="list-header">
+            <div class="list-cell text1-ajust">Nome</div>
+            <div class="list-cell">Horas Analisadas</div>
+            <div class="list-cell">Quantidade (Talhões)</div>
+          </div>
+          <v-list-item v-for="(analysts, index) in usersComNumeracao" :key="index" class="v-list-item">
+            <div class="list-cell"> {{ analysts.numeroNomeAnalyst }} {{ analysts.nome }}</div>
+            <div class="list-cell"></div>
+            <div class="list-cell"></div>
+          </v-list-item>
+        </v-list>
+      </v-col>
 
-            <v-col cols="8" md="4" lg="2" class="me-16">
-              <v-card class= "kpi-card">
-                <div class="kpi-header">Talhões Aprovados (%)</div>
-              </v-card>
-              <v-card class= "kpi-card">
-                <div class="kpi-header"></div>
-              </v-card>
-              <v-card class= "kpi-card">
-                <div class="kpi-header">Quantidade Analistas</div>
-              </v-card>                 
-            </v-col>
+      <v-col cols="8" md="4" lg="2" class="me-16">
+        <v-card class="kpi-card">
+          <div class="kpi-header">Talhões Aprovados (%)</div>
+          <div class="kpi-value">{{ talhoesAprovadosPercentual }}%</div>
+        </v-card>
+        <v-card class="kpi-card">
+          <div class="kpi-header">Total de Talhões</div>
+          <div class="kpi-value">{{ talhoesEstatisticas.total }}</div>
+        </v-card>
+        <v-card class="kpi-card">
+          <div class="kpi-header">Quantidade Analistas</div>
+          <div class="kpi-value">{{ quantidadeAnalistas }}</div>
+        </v-card>                 
+      </v-col>
             
-            <v-col cols="12" md="6" lg="4">
-              <DonutChart :farms="farms" />
-            </v-col>
-        </v-row>
-    </v-container>
+      <v-col cols="12" md="6" lg="4">
+        <DonutChart :farms="farms" @farm-changed="onFarmChanged" />
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import DonutChart from '@/components/Dashboard/DonutChart.vue';
+import api from '@/utils/api';
+import type { Farm, Talhao, User } from '@/types/farms';
 
+// Componente como default export
 export default defineComponent({
   name: 'DashboardBody',
   components: {
@@ -49,27 +55,100 @@ export default defineComponent({
   },
   props: {
     users: {
-      type: Array,
+      type: Array as PropType<User[]>,
       required: true
     },
     farms: {
-      type: Array,
+      type: Array as PropType<Farm[]>,
       required: true
     }
   },
-computed: {
-  usersComNumeracao() {
-    return this.users.map((user, i) => ({
-      ...user,
-      numeroNomeAnalyst: i + 1
-    }));
-  }
-}
+  data() {
+    return {
+      selectedFarmId: null as string | null,
+      selectedFarmData: null as Farm | null
+    };
+  },
+  computed: {
+    farmsForCalculation(): Farm[] {
+      // Se uma fazenda específica foi selecionada, usar apenas ela
+      if (this.selectedFarmId && this.selectedFarmData) {
+        return [this.selectedFarmData];
+      }
+      // Caso contrário, usar todas as fazendas
+      return this.farms;
+    },
+    usersComNumeracao(): User[] {
+      return this.users.map((user: User, i: number) => ({
+        ...user,
+        numeroNomeAnalyst: i + 1,
+      }));
+    },
+    talhoesEstatisticas() {
+      const stats = {
+        total: 0,
+        aprovados: 0,
+        recusados: 0,
+        emAnalise: 0,
+        emAberto: 0
+      };
+
+      this.farmsForCalculation.forEach((farm: Farm) => {
+        
+        if (farm.talhoes && Array.isArray(farm.talhoes)) {
+          farm.talhoes.forEach((talhao: Talhao) => {
+            stats.total++;
+            
+            switch (talhao.status) {
+              case 'APROVADO':
+                stats.aprovados++;
+                break;
+              case 'RECUSADO':
+                stats.recusados++;
+                break;
+              case 'EM_ANALISE':
+                stats.emAnalise++;
+                break;
+              case 'EM_ABERTO':
+                stats.emAberto++;
+                break;
+            }
+          });
+        }
+      });
+      return stats;
+    },
+    talhoesAprovadosPercentual(): number {
+      if (this.talhoesEstatisticas.total === 0) return 0;
+      return Math.round((this.talhoesEstatisticas.aprovados / this.talhoesEstatisticas.total) * 100);
+    },
+    quantidadeAnalistas(): number {
+      return this.users.length;
+    }
+  },
+  methods: {
+    async onFarmChanged(farmId: string | null) {
+      this.selectedFarmId = farmId;
+      
+      if (farmId) {
+        try {
+          const response = await api.get(`/areas/${farmId}`);
+          this.selectedFarmData = {
+            ...response.data,
+            talhoes: response.data.talhoes || []
+          } as Farm;
+        } catch {
+          this.selectedFarmData = null;
+        }
+      } else {
+        this.selectedFarmData = null;
+      }
+    }
+  },
 });
 </script>
 
 <style scoped>
-
 /* ranking style */
 .ranking-container {
   background-color: #D9D9D9;
@@ -181,4 +260,13 @@ computed: {
   align-items: center;
 }
 
+.kpi-value {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60%;
+  font-weight: bold;
+  font-size: 2rem;
+  color: #023047;
+}
 </style>

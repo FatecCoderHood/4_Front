@@ -4,6 +4,7 @@ export interface Farm {
   cidade: string;
   estado: string;
   status?: string;
+  talhoes: Talhao[];
 }
 
 export interface Talhao {
@@ -33,6 +34,14 @@ export interface Feature {
 
 export interface Geometry {
   type: string;
-  coordinates: any;  // Pode ser um array de coordenadas ou objetos, dependendo do tipo de geometria (p.ex., Polygon, Point)
+  coordinates: any;
+}
+
+export interface User {
+  id: string;
+  nome: string;
+  numeroNomeAnalyst?: number;
+  horasAnalisadas?: number;
+  quantidadeTalhoes?: number;
 }
 
