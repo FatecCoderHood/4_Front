@@ -40,6 +40,7 @@ export interface Geometry {
 export interface User {
   id: string;
   nome: string;
+  email?: string;
   numeroNomeAnalyst?: number;
   horasAnalisadas?: number;
   quantidadeTalhoes?: number;

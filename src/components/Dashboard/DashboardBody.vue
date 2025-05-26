@@ -4,18 +4,32 @@
       <v-col cols="12" md="6" lg="4" class="me-16">
         <v-list class="ranking-list">
           <div class="ranking-header">
-            <div class="rank-title">Ranking Analista</div>
+            <div class="rank-title">
+              Ranking Analista
+            </div>
           </div>
           <div class="list-header">
-            <div class="list-cell text1-ajust">Nome</div>
-            <div class="list-cell">Horas Analisadas</div>
-            <div class="list-cell">Quantidade (Talhões)</div>
+            <div class="list-cell text1-ajust">
+              Nome
+            </div>
+            <div class="list-cell">
+              Horas Analisadas
+            </div>
+            <div class="list-cell">
+              Quantidade (Talhões)
+            </div>
           </div>
-          <v-list-item v-for="(analysts, index) in usersComNumeracao" :key="index" class="v-list-item">
-            <div class="list-cell"> {{ analysts.numeroNomeAnalyst }} {{ analysts.nome }}</div>
-            <div class="list-cell"></div>
-            <div class="list-cell"></div>
-          </v-list-item>
+          <div v-for="(analyst, index) in usersComNumeracao" :key="index" class="ranking-row">
+            <div class="list-cell"> 
+              {{ analyst.numeroNomeAnalyst }} {{ analyst.nome }}
+            </div>
+            <div class="list-cell"> 
+              {{ analyst.horasAnalisadas || 0 }}
+            </div>
+            <div class="list-cell">
+              {{ analyst.quantidadeTalhoes || 0 }}
+            </div>
+          </div>
         </v-list>
       </v-col>
 
@@ -42,7 +56,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
+import { defineComponent, type PropType } from 'vue';
 import DonutChart from '@/components/Dashboard/DonutChart.vue';
 import api from '@/utils/api';
 import type { Farm, Talhao, User } from '@/types/farms';
@@ -210,6 +224,16 @@ export default defineComponent({
   text-transform: uppercase;
 }
 
+.ranking-row {
+  display: flex;
+  padding: 10px 5px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.ranking-row:hover {
+  background-color: #f5f5f5;
+}
+
 .text1-ajust {
   display: flex;
   align-items: center;
@@ -225,13 +249,6 @@ export default defineComponent({
   font-size: 0.70rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-}
-
-.v-list-item {
-  display: flex;
-  justify-content: space-between;
-  padding-left: 0;
-  padding-right: 0;
 }
 
 /* KPI cards style */
