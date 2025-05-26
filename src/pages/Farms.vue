@@ -35,9 +35,9 @@
     />
 
     <FarmUploadTiff
-      v-model:uploadOpen="uploadOpen"
       :farms="areas"
-      :open="uploadOpen"
+      :uploadOpen="uploadOpen"
+      @update:uploadOpen="uploadOpen = $event"
       @submitUpload="uploadTiff"
     />
 
