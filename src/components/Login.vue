@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import api from '@/utils/api' // Usar a instância configurada do axios
+import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 import { ref } from 'vue'
 
@@ -52,7 +52,7 @@ const onsubmit = async () => {
     errorMessage.value = ''
     
     try {
-        const response = await api.post('/auth/login', {
+        const response = await axios.post('http://localhost:8080/auth/login', {
             email: email.value,
             senha: password.value
         })
