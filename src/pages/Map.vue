@@ -73,6 +73,7 @@
       v-if="map && selectedArea"
       :map="map"
       :area-id="selectedArea.id"
+      key="tiff-processor"
     />
 
     <div v-if="showTalhoesModal" class="talhoes-overlay">
@@ -239,6 +240,8 @@ export default defineComponent({
       });
     },
 
+    
+
     createWeedGeometry(talhao: Talhao): any {
       if ((talhao as any).geometry) {
         return (talhao as any).geometry;
@@ -271,6 +274,12 @@ export default defineComponent({
       this.$nextTick(() => {
         if (this.$refs.geoJSONLayer) {
           (this.$refs.geoJSONLayer as any).displayGeoJSON(area);
+        }
+
+        // Adicione estas linhas para debug:
+        if (this.map) {
+          this.map.invalidateSize();
+          console.log('Camadas ativas:', Object.values(this.map._layers));
         }
 
         const farmsMenu = this.$refs.farmsMenu as any;
@@ -410,15 +419,18 @@ export default defineComponent({
 }
 
 .map-style-button {
-  background: white;
-  border: 2px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  padding: 8px;
-  cursor: pointer;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
-  display: flex;
+  width: 40px;          
+  height: 40px;         
+  border-radius: 50%;   
+  border: none;        
+  background-color: white; 
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2); 
+  cursor: pointer;     
+  display: flex;        
   align-items: center;
   justify-content: center;
+  padding: 0;          
+  transition: background-color 0.3s ease; 
 }
 
 .map-style-button:hover {
