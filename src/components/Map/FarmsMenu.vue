@@ -41,7 +41,11 @@
     v-if="selectedFarm" 
     class="talhoes-btn" 
     :class="{ 'btn-closed': !isVisible }"
+
+    @click="showTalhoes"
+
     @click="showTalhoesOverlay"
+
     title="Visualizar talhões"
   >
     <svg viewBox="0 0 24 24" width="16" height="16">
@@ -53,6 +57,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { Farm, Talhao } from '@/types/farms';
+import api from '@/utils/api'; // Usar a instância configurada do axios
 
 interface FarmWithTalhoes extends Farm {
   talhoes: Talhao[];
@@ -62,7 +67,9 @@ interface FarmWithTalhoes extends Farm {
 
 export default defineComponent({
   name: 'FarmsMenu',
-  emits: ['select-area', 'sidebar-toggle', 'show-talhoes'],
+
+  emits: ['select-area', 'sidebar-toggle', 'show-talhoes', 'show-status-modal'],
+
 
   data() {
     return {
@@ -99,27 +106,49 @@ export default defineComponent({
   },
 
   methods: {
-    selectFarm(farm: FarmWithTalhoes) {
-      this.selectedFarm = farm;
-      this.$emit('select-area', {
-        ...farm,
-        talhoes: farm.talhoes || [],
-      });
+
+    async selectFarm(farm: FarmWithTalhoes)
+    {
+      try {
+        const response = await api.get(`/areas/${farm.id}`);
+        const data = response.data;
+        
+        farm = {
+          id: data.id,
+          nome: data.nome,
+          estado: data.estado,
+          cidade: data.cidade,
+          talhoes: data.talhoes || [],
+          status: data.status || 'EM_ANALISE',
+          statusColor: this.getStatusColor(data.status || 'EM_ANALISE'),
+          statusLabel: this.getStatusLabel(data.status || 'EM_ANALISE'),
+        }
+
+        this.selectedFarm = farm;
+        this.$emit('select-area', {
+          ...farm,
+          talhoes: farm.talhoes || [],
+        });
+      } catch (error) {
+        this.errorMessage = 'Erro ao carregar fazendas.';
+        console.error(error);
+      } 
+
     },
 
     async fetchFarms() {
       this.loading = true;
       try {
-        const response = await fetch('http://localhost:8080/areas');
-        if (!response.ok) throw new Error(`Erro ${response.status}`);
 
-        const data = await response.json();
+        const response = await api.get('/areas');
+        const data = response.data;
+
         this.farms = data.map((farm: any) => ({
           ...farm,
           talhoes: farm.talhoes || [],
-          status: farm.status || 'em_analise',
-          statusColor: this.getStatusColor(farm.status || 'em_analise'),
-          statusLabel: this.getStatusLabel(farm.status || 'em_analise'),
+          status: farm.status || 'EM_ANALISE',
+          statusColor: this.getStatusColor(farm.status || 'EM_ANALISE'),
+          statusLabel: this.getStatusLabel(farm.status || 'EM_ANALISE'),
         }));
       } catch (error) {
         this.errorMessage = 'Erro ao carregar fazendas.';
@@ -132,36 +161,54 @@ export default defineComponent({
     updateFarmStatus(farmId: number, newStatus: string) {
       const farmIndex = this.farms.findIndex(farm => farm.id === farmId);
       if (farmIndex >= 0) {
-        this.farms[farmIndex] = {
-          ...this.farms[farmIndex],
+        // Cria um novo array para forçar a reatividade
+        const updatedFarms = [...this.farms];
+        updatedFarms[farmIndex] = {
+          ...updatedFarms[farmIndex],
           status: newStatus,
-          statusColor: this.getStatusColor(newStatus.toLowerCase()),
-          statusLabel: this.getStatusLabel(newStatus.toLowerCase()),
+          statusColor: this.getStatusColor(newStatus),
+          statusLabel: this.getStatusLabel(newStatus),
         };
+
+        
+        // Atribui o novo array para disparar a reatividade
+        this.farms = updatedFarms;
+        
+        // Se for a fazenda selecionada, atualiza também
+        if (this.selectedFarm?.id === farmId) {
+          this.selectedFarm = {
+            ...this.selectedFarm,
+            status: newStatus,
+            statusColor: this.getStatusColor(newStatus),
+            statusLabel: this.getStatusLabel(newStatus),
+          };
+        }
+
         this.farms = [...this.farms];
+
       }
     },
 
     getStatusColor(status: string) {
       const statusMap: Record<string, string> = {
-        'em_analise': 'grey',
-        'ativo': '#4CAF50',
-        'inativo': '#f44336',
-        'aprovado': '#03bd00',
-        'recusado': '#FF6347',
+
+        'em_analise': '#f39c12',
+        'em_aberto': '#95a5a6',
+        'aprovado': '#2ecc71',
+        'recusado': '#e74c3c',
+
       };
-      return statusMap[status.toLowerCase()] || '';
+      return statusMap[status.toLowerCase()] || '#95a5a6';
     },
 
     getStatusLabel(status: string) {
       const labelMap: Record<string, string> = {
-        'em_analise': 'Em análise',
-        'ativo': 'Ativo',
-        'inativo': 'Inativo',
+        'em_analise': 'Em Análise',
+        'em_aberto': 'Em Aberto',
         'aprovado': 'Aprovado',
         'recusado': 'Recusado',
       };
-      return labelMap[status.toLowerCase()] || '';
+      return labelMap[status.toLowerCase()] || status;
     },
 
     toggleSidebar() {
@@ -169,10 +216,16 @@ export default defineComponent({
       this.$emit('sidebar-toggle', this.isVisible);
     },
 
-    showTalhoesOverlay() {
+
+    showTalhoes() {
       if (!this.selectedFarm) return;
       this.$emit('show-talhoes', this.selectedFarm.talhoes);
     },
+
+    showTalhaoStatusModal(talhao: Talhao) {
+      this.$emit('show-status-modal', talhao);
+    },
+
   },
 });
 </script>

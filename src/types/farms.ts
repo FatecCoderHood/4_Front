@@ -4,18 +4,22 @@ export interface Farm {
   cidade: string;
   estado: string;
   status?: string;
+  talhoes: Talhao[];
 }
 
 export interface Talhao {
-  id?: string;
-  mnTl?: number;  // Mn TL do talhão
-  areaHaTl?: number;  // Área do talhão em hectares
-  solo?: string;  // Tipo de solo
-  cultura?: string;  // Cultura plantada
-  safra?: string;  // Safra
-  coordinates?: number[][][];  // Coordenadas GeoJSON, que normalmente é um array de arrays (polígono)
-  geojson?: any;  // Dados do GeoJSON
+  id: number;  // Alterado de string para number
+  mnTl?: number;
+  areaHaTl?: number;
+  solo?: string;
+  cultura?: string;
+  safra?: string;
+  coordinates?: number[][][];
+  geojson?: any;
   produtividadePorAno?: number;
+  status?: string;
+  ervasDaninhas?: string[];
+
 }
 
 export interface GeoJsonData {
@@ -31,6 +35,18 @@ export interface Feature {
 
 export interface Geometry {
   type: string;
+
+  coordinates: any;
+}
+
+export interface User {
+  id: string;
+  nome: string;
+  email?: string;
+  numeroNomeAnalyst?: number;
+  horasAnalisadas?: number;
+  quantidadeTalhoes?: number;
   coordinates: any;  // Pode ser um array de coordenadas ou objetos, dependendo do tipo de geometria (p.ex., Polygon, Point)
+
 }
 

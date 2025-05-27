@@ -13,6 +13,7 @@
       @view-talhao="openViewModal"
       @edit-farm="openEditModal"
       @delete-farm="confirmDelete"
+      @upload="openUploadModal"
     />
 
     <FarmForm
@@ -33,6 +34,13 @@
       @confirm="deleteArea"
     />
 
+    <FarmUploadTiff
+      :farms="areas"
+      :uploadOpen="uploadOpen"
+      @update:uploadOpen="uploadOpen = $event"
+      @submitUpload="uploadTiff"
+    />
+
     <FarmViewDialog 
     v-model="viewOpen"
     :open="viewOpen"
@@ -47,17 +55,23 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-import axios, { AxiosError } from 'axios';
-import FarmList from '@/components/farms/FarmList.vue';
-import FarmForm from '@/components/farms/FarmForm.vue';
-import FarmDeleteDialog from '@/components/farms/FarmDeleteDialog.vue';
+import api from '@/utils/api'; // Usar a instância configurada do axios
+import FarmList from '@/components/Farms/FarmList.vue';
+import FarmForm from '@/components/Farms/FarmForm.vue';
+import FarmDeleteDialog from '@/components/Farms/FarmDeleteDialog.vue';
 import FarmViewDialog from '@/components/Farms/FarmViewDialog.vue';
+
+import FarmUploadTiff from '@/components/Farms/FarmUploadTiff.vue';
+import type { AxiosError } from 'axios';
+import axios from 'axios';
+
 
 // Configuração do axios para apontar para o backend correto
 const api = axios.create({
   baseURL: 'http://localhost:8080', // Altere para a porta do seu backend Spring
   timeout: 50000,
 });
+
 
 interface Area {
   id: string;
@@ -68,7 +82,7 @@ interface Area {
 }
 
 export default defineComponent({
-  components: { FarmList, FarmForm, FarmDeleteDialog },
+  components: { FarmList, FarmForm, FarmDeleteDialog, FarmUploadTiff },
   setup() {
     const areas = ref<Area[]>([]);
     const loading = ref(false);
@@ -83,6 +97,8 @@ export default defineComponent({
     const showSnackbar = ref(false);
     const snackbarMessage = ref('');
     const snackbarColor = ref('success');
+    const uploadOpen = ref(false);
+    const tiffFile = ref<File | null>(null);
 
     async function loadAreas() {
       loading.value = true;
@@ -115,8 +131,30 @@ export default defineComponent({
       }
     }
 
+      async function uploadTiff(payload: { farmId: string, file: File }){
+        if (!payload.file || !payload.farmId) {
+          showFeedback('Selecione uma fazenda e um arquivo TIFF para upload.', 'error');
+          return;
+        }
+        const formData = new FormData();
+        formData.append('file', payload.file);
+        formData.append('areaId', payload.farmId);
+
+        try{
+          const response = await axios.post("http://localhost:8080/api/tiffs",formData);
+          console.log('TIFF ENVIADO!', response.data);
+        } catch (error) {
+          console.error('Erro ao enviar TIFF', error);
+        }
+      }
+
     function openViewModal() {
       viewOpen.value = true;
+    }
+
+    function openUploadModal() {
+      uploadOpen.value = true;
+      selectedArea.value = null;
     }
 
     function openAddModal() {
@@ -211,6 +249,10 @@ export default defineComponent({
       showSnackbar,
       snackbarMessage,
       snackbarColor,
+      uploadOpen,
+      tiffFile,
+      uploadTiff,
+      openUploadModal,
       openAddModal,
       openEditModal,
       openViewModal,
