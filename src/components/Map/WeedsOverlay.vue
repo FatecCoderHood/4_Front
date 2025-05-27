@@ -1,4 +1,5 @@
 <template>
+
   <div>
     <!-- Botão de ervas daninhas -->
     <button 
@@ -99,6 +100,28 @@ import type { WeedFeature, Talhao, WeedsOverlayState } from '@/types/weeds';
 import axios from 'axios';
 
 type ToolMode = 'draw' | 'erase' | null;
+
+  <button 
+    class="weeds-toggle-btn" 
+    :class="{ 'btn-closed': !sidebarOpen, 'active': showWeedsOverlay }"
+    @click="toggleWeedsOverlay"
+    title="Mostrar/ocultar ervas daninhas"
+  >
+    <svg viewBox="0 0 24 24" width="16" height="16">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+      <circle cx="12" cy="12" r="5" :fill="showWeedsOverlay ? '#4CAF50' : 'none'"/>
+    </svg>
+  </button>
+</template>
+
+
+
+
+<script lang="ts">
+import { defineComponent, PropType } from 'vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import type { WeedFeature, Talhao, WeedsOverlayState } from '@/types/weeds';
 
 export default defineComponent({
   name: 'WeedsOverlay',
@@ -205,6 +228,17 @@ export default defineComponent({
       }
     }
   },
+
+    }
+  },
+  data(): WeedsOverlayState {
+    return {
+      showWeedsOverlay: false,
+      weedsLayers: [],
+      hasValidBounds: false
+    };
+  },
+
   methods: {
     normalizeWeedsData(weeds: WeedFeature[]): WeedFeature[] {
       return weeds.map(weed => {
@@ -212,11 +246,13 @@ export default defineComponent({
           if (typeof weed.properties.CLASSE === 'string' && 
               weed.properties.CLASSE.includes('type=Feature')) {
             
+
             let jsonStr = weed.properties.CLASSE
               .replace(/(\w+)=/g, '"$1":')
               .replace(/'/g, '"')
               .replace(/([{\[,])\s*([a-zA-Z0-9_]+):/g, '$1"$2":')
               .replace(/:([a-zA-Z_][a-zA-Z0-9_]*)([,\]}])/g, ':"$1"$2');
+
 
             jsonStr = jsonStr.replace(/:\s*([a-zA-Z]+)\s*([,\}])/g, ':"$1"$2');
 
@@ -259,6 +295,7 @@ export default defineComponent({
         this.hideWeedsFromMap();
       }
     },
+
 
     handleEditWeeds(): void {
       if (!this.showWeedsOverlay) return;
@@ -553,6 +590,7 @@ export default defineComponent({
       this.showEditModal = false;
     },
 
+
     showWeedsOnMap(): void {
       if (!this.map) {
         console.error('[SHOW] Mapa não disponível');
@@ -563,6 +601,7 @@ export default defineComponent({
         console.warn('[SHOW] Nenhum dado de ervas disponível');
         return;
       }
+
 
       try {
         const normalizedData = this.normalizeWeedsData(this.weedsData);
@@ -620,6 +659,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('Erro ao mostrar ervas no mapa:', error);
+
       }
     },
 
@@ -672,6 +712,7 @@ export default defineComponent({
       
       console.log(`[HIDE] Removendo ${this.weedsLayers.length} camadas`);
       
+
       try {
         this.weedsLayers.forEach(layer => {
           try {
@@ -708,6 +749,7 @@ export default defineComponent({
     } catch (error) {
       console.error('Erro ao desmontar componente:', error);
     }
+
   }
 });
 </script>
@@ -751,6 +793,7 @@ export default defineComponent({
 .weeds-toggle-btn.active:hover {
   background-color: #b2ebf2;
 }
+
 
 .edit-weeds-btn {
   position: absolute;
@@ -939,6 +982,7 @@ export default defineComponent({
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 </style>
 
 <style>

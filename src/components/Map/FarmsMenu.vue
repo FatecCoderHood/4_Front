@@ -41,7 +41,11 @@
     v-if="selectedFarm" 
     class="talhoes-btn" 
     :class="{ 'btn-closed': !isVisible }"
+
     @click="showTalhoes"
+
+    @click="showTalhoesOverlay"
+
     title="Visualizar talhões"
   >
     <svg viewBox="0 0 24 24" width="16" height="16">
@@ -63,7 +67,9 @@ interface FarmWithTalhoes extends Farm {
 
 export default defineComponent({
   name: 'FarmsMenu',
+
   emits: ['select-area', 'sidebar-toggle', 'show-talhoes', 'show-status-modal'],
+
 
   data() {
     return {
@@ -100,6 +106,7 @@ export default defineComponent({
   },
 
   methods: {
+
     async selectFarm(farm: FarmWithTalhoes)
     {
       try {
@@ -126,13 +133,16 @@ export default defineComponent({
         this.errorMessage = 'Erro ao carregar fazendas.';
         console.error(error);
       } 
+
     },
 
     async fetchFarms() {
       this.loading = true;
       try {
+
         const response = await api.get('/areas');
         const data = response.data;
+
         this.farms = data.map((farm: any) => ({
           ...farm,
           talhoes: farm.talhoes || [],
@@ -159,6 +169,7 @@ export default defineComponent({
           statusColor: this.getStatusColor(newStatus),
           statusLabel: this.getStatusLabel(newStatus),
         };
+
         
         // Atribui o novo array para disparar a reatividade
         this.farms = updatedFarms;
@@ -172,15 +183,20 @@ export default defineComponent({
             statusLabel: this.getStatusLabel(newStatus),
           };
         }
+
+        this.farms = [...this.farms];
+
       }
     },
 
     getStatusColor(status: string) {
       const statusMap: Record<string, string> = {
+
         'em_analise': '#f39c12',
         'em_aberto': '#95a5a6',
         'aprovado': '#2ecc71',
         'recusado': '#e74c3c',
+
       };
       return statusMap[status.toLowerCase()] || '#95a5a6';
     },
@@ -200,6 +216,7 @@ export default defineComponent({
       this.$emit('sidebar-toggle', this.isVisible);
     },
 
+
     showTalhoes() {
       if (!this.selectedFarm) return;
       this.$emit('show-talhoes', this.selectedFarm.talhoes);
@@ -208,6 +225,7 @@ export default defineComponent({
     showTalhaoStatusModal(talhao: Talhao) {
       this.$emit('show-status-modal', talhao);
     },
+
   },
 });
 </script>

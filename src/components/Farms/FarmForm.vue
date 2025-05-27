@@ -231,6 +231,7 @@ export default defineComponent({
       } else {
         cidade.value = [];
       }
+
     });
 
     watch(cidadeSelecionada, (novaCidade) => {
@@ -288,8 +289,20 @@ export default defineComponent({
       productivityMap.value[item.mnTl] = Number(item.productivity);
     }
   
+
     async function handleNext() {
       if (currentStep.value === 1) {
+
+      function onWeedsGeoJsonProcessed(data: { geoJson: any }) {
+        weedsGeoJsonData.value = data.geoJson;
+      }
+  
+      function updateProductivity(item: any) {
+        productivityMap.value[item.mnTl] = Number(item.productivity);
+      }
+  
+      async function validateStep1() {
+
         if (step1Form.value) {
           const { valid } = await step1Form.value.validate();
           if (valid) {
@@ -300,17 +313,41 @@ export default defineComponent({
         // Para steps 2 e 3, sem validação
         currentStep.value++;
       }
-    }
 
-      function save() {
-      saving.value = true;
-      const payload = {
-        nome: farm.value.nome,
-        estado: estadoSelecionado.value,
-        cidade: cidadeSelecionada.value,
-        geojson: geoJsonData.value,
-        ervasDaninhasGeojson: weedsGeoJsonData.value, // Nome corrigido
-        produtividadePorAno: productivityMap.value, // Nome corrigido
+  
+        function save() {
+        saving.value = true;
+        const payload = {
+          nome: farm.value.nome,
+          cidade: farm.value.cidade,
+          estado: farm.value.estado,
+          geojson: geoJsonData.value,
+          ervasDaninhasGeojson: weedsGeoJsonData.value, // Nome corrigido
+          produtividadePorAno: productivityMap.value // Nome corrigido
+        };
+        emit('save', payload);
+      }
+  
+      return {
+        states,
+        currentStep,
+        step1Form,
+        requiredRule,
+        geoJsonFile,
+        weedsGeoJsonFile,
+        plots,
+        plotsWithProductivity,
+        loadingPlots,
+        plotHeaders,
+        farm,
+        close,
+        onGeoJsonProcessed,
+        onWeedsGeoJsonProcessed,
+        updateProductivity,
+        validateStep1,
+        save,
+        saving
+
       };
       emit('save', payload);
       setTimeout(() => {

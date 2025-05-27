@@ -60,9 +60,18 @@ import FarmList from '@/components/Farms/FarmList.vue';
 import FarmForm from '@/components/Farms/FarmForm.vue';
 import FarmDeleteDialog from '@/components/Farms/FarmDeleteDialog.vue';
 import FarmViewDialog from '@/components/Farms/FarmViewDialog.vue';
+
 import FarmUploadTiff from '@/components/Farms/FarmUploadTiff.vue';
 import type { AxiosError } from 'axios';
 import axios from 'axios';
+
+
+// Configuração do axios para apontar para o backend correto
+const api = axios.create({
+  baseURL: 'http://localhost:8080', // Altere para a porta do seu backend Spring
+  timeout: 50000,
+});
+
 
 interface Area {
   id: string;

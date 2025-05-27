@@ -6,6 +6,7 @@
       @sidebar-toggle="handleSidebarToggle"
       @show-talhoes="showTalhoesOverlay"
       @show-status-modal="showTalhaoStatusModal"
+
     />
     
     <div id="map" ref="mapContainer"></div>
@@ -69,12 +70,14 @@
       :weedsData="weedsDataForSelectedArea"
     />
 
+
     <TiffProcessor 
       v-if="map && selectedArea"
       :map="map"
       :area-id="selectedArea.id"
       key="tiff-processor"
     />
+
 
     <div v-if="showTalhoesModal" class="talhoes-overlay">
       <div class="talhoes-container">
@@ -95,6 +98,7 @@
               <p>Solo: {{ talhao.solo }}</p>
               <p>Cultura: {{ talhao.cultura }} </p>
               <p>Safra: {{ talhao.safra }} </p>
+
               <p>Produtividade: {{ talhao.produtividadePorAno }} sacas/ha </p>
               <p>
                 Status: 
@@ -106,6 +110,7 @@
                   {{ getStatusLabel(talhao.status) }}
                 </button>
               </p>
+
             </div>
           </div>
         </div>
@@ -145,6 +150,7 @@ interface MapPageData {
   weedsDataForSelectedArea: WeedFeature[];
   allWeedsData: WeedFeature[];
   selectedTalhao: Talhao | null;
+
 }
 
 export default defineComponent({
@@ -155,18 +161,23 @@ export default defineComponent({
     MapControls,
     GeoJSONLayer,
     StatusActions,
+
     WeedsOverlay,
     TiffProcessor
+
   },
 
   data(): MapPageData {
     return {
+
       map: null,
       selectedArea: null,
+
       isDrawingMode: false,
       sidebarOpen: false,
       showMapStyleOptions: false,
       selectedMapStyle: 'satellite',
+
       baseLayers: {},
       currentBaseLayer: null,
       showStatusActions: false,
@@ -175,6 +186,7 @@ export default defineComponent({
       weedsDataForSelectedArea: [],
       allWeedsData: [],
       selectedTalhao: null,
+
     };
   },
 
@@ -240,6 +252,7 @@ export default defineComponent({
       });
     },
 
+
     
 
     createWeedGeometry(talhao: Talhao): any {
@@ -270,6 +283,9 @@ export default defineComponent({
       this.selectedArea = area;
       this.currentTalhoes = area.talhoes || [];
       this.weedsDataForSelectedArea = this.generateWeedsDataFromTalhoes(area.talhoes);
+
+      this.showStatusActions = true;
+
 
       this.$nextTick(() => {
         if (this.$refs.geoJSONLayer) {
@@ -317,6 +333,7 @@ export default defineComponent({
       this.isDrawingMode = false;
     },
 
+
     showTalhoesOverlay(talhoes: Talhao[]): void {
       this.currentTalhoes = talhoes;
       this.showTalhoesModal = true;
@@ -351,6 +368,29 @@ export default defineComponent({
     async updateTalhaoStatus(newStatus: string): Promise<void> {
       if (!this.selectedArea || !this.selectedTalhao) return;
       
+
+    async approveFarm(farmId: number): Promise<void> {
+      console.log('Fazenda aprovada:', farmId);
+      try {
+        await this.updateFarmStatus(farmId, 'APROVADO');
+        this.showStatusActions = false;
+      } catch (error) {
+        console.error('Erro ao aprovar fazenda:', error);
+      }
+    },
+
+    async rejectFarm(farmId: number): Promise<void> {
+      console.log('Fazenda recusada:', farmId);
+      try {
+        await this.updateFarmStatus(farmId, 'RECUSADO');
+        this.showStatusActions = false;
+      } catch (error) {
+        console.error('Erro ao recusar fazenda:', error);
+      }
+    },
+
+    async updateFarmStatus(farmId: number, status: string): Promise<void> {
+
       try {
         await api.put(
           `/areas/${this.selectedArea.id}/talhoes/${this.selectedTalhao.id}/status`,
@@ -362,12 +402,14 @@ export default defineComponent({
           this.selectedTalhao.status = newStatus;
         }
 
+
         // Atualiza a lista de talhões
         this.currentTalhoes = this.currentTalhoes.map(t => 
           t.id === this.selectedTalhao?.id ? { ...t, status: newStatus } : t
         );
 
         // Atualiza o status da área no FarmsMenu
+
         const farmsMenu = this.$refs.farmsMenu as any;
         if (farmsMenu && farmsMenu.updateFarmStatus) {
           // Primeiro atualiza o status dos talhões na fazenda selecionada
@@ -387,7 +429,16 @@ export default defineComponent({
       } catch (error) {
         console.error('Erro ao atualizar status do talhão:', error);
       }
+
     }
+
+    },
+
+    showTalhoesOverlay(talhoes: Talhao[]): void {
+      this.currentTalhoes = talhoes;
+      this.showTalhoesModal = true;
+    },
+
   },
 
   beforeUnmount() {
@@ -399,7 +450,9 @@ export default defineComponent({
 });
 </script>
 
+
 <style scoped>
+/* Estilos permanecem exatamente os mesmos */
 .map-page {
   position: relative;
   width: 100%;
@@ -533,6 +586,7 @@ export default defineComponent({
   color: #666;
 }
 
+
 .status-button {
   padding: 5px 10px;
   border: none;
@@ -545,4 +599,5 @@ export default defineComponent({
 .status-button:hover {
   opacity: 0.9;
 }
+
 </style>

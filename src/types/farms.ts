@@ -19,6 +19,7 @@ export interface Talhao {
   produtividadePorAno?: number;
   status?: string;
   ervasDaninhas?: string[];
+
 }
 
 export interface GeoJsonData {
@@ -34,6 +35,7 @@ export interface Feature {
 
 export interface Geometry {
   type: string;
+
   coordinates: any;
 }
 
@@ -44,5 +46,7 @@ export interface User {
   numeroNomeAnalyst?: number;
   horasAnalisadas?: number;
   quantidadeTalhoes?: number;
+  coordinates: any;  // Pode ser um array de coordenadas ou objetos, dependendo do tipo de geometria (p.ex., Polygon, Point)
+
 }
 
