@@ -34,9 +34,6 @@
       @confirm="deleteArea"
     />
 
-
-    <FarmViewDialog
-
     <FarmUploadTiff
       :farms="areas"
       :uploadOpen="uploadOpen"
@@ -45,7 +42,6 @@
     />
 
     <FarmViewDialog 
-
     v-model="viewOpen"
     :open="viewOpen"
     @close="viewOpen = false"
@@ -54,7 +50,6 @@
     <v-snackbar v-model="showSnackbar" :timeout="5000" :color="snackbarColor" top right>
       {{ snackbarMessage }}
     </v-snackbar>
-    <UploadStatusDrawer ref="uploadDrawer" />
   </v-container>
 </template>
 
@@ -65,13 +60,9 @@ import FarmList from '@/components/Farms/FarmList.vue';
 import FarmForm from '@/components/Farms/FarmForm.vue';
 import FarmDeleteDialog from '@/components/Farms/FarmDeleteDialog.vue';
 import FarmViewDialog from '@/components/Farms/FarmViewDialog.vue';
-
-import UploadStatusDrawer from '@/components/Farms/UploadStatusDrawer.vue';
-
 import FarmUploadTiff from '@/components/Farms/FarmUploadTiff.vue';
 import type { AxiosError } from 'axios';
 import axios from 'axios';
-
 
 interface Area {
   id: string;
@@ -82,11 +73,7 @@ interface Area {
 }
 
 export default defineComponent({
-
-  components: { FarmList, FarmForm, FarmDeleteDialog, UploadStatusDrawer },
-
   components: { FarmList, FarmForm, FarmDeleteDialog, FarmUploadTiff },
-
   setup() {
     const areas = ref<Area[]>([]);
     const loading = ref(false);
@@ -101,22 +88,18 @@ export default defineComponent({
     const showSnackbar = ref(false);
     const snackbarMessage = ref('');
     const snackbarColor = ref('success');
-
-    const uploadDrawer = ref();
-
     const uploadOpen = ref(false);
     const tiffFile = ref<File | null>(null);
-
 
     async function loadAreas() {
       loading.value = true;
       try {
         const response = await api.get('/areas');
-
+        
         if (!Array.isArray(response.data)) {
           throw new Error('Resposta da API não é um array');
         }
-
+        
         areas.value = response.data.map((area: any) => ({
           id: area.id,
           nome: area.nome || 'Sem nome',
@@ -127,7 +110,7 @@ export default defineComponent({
       } catch (error) {
         console.error('Erro ao carregar áreas:', error);
         showFeedback('Erro ao carregar áreas. Tente novamente.', 'error');
-
+        
         if (process.env.NODE_ENV === 'development') {
           areas.value = [
             { id: '1', nome: 'Fazenda Exemplo', cidade: 'São Paulo', estado: 'SP' }
@@ -186,59 +169,27 @@ export default defineComponent({
       deleteDialogOpen.value = true;
     }
 
-    // async function saveArea(areaData: any) {
-    //   saving.value = true;
-    //   try {
-    //     const url = editing.value && selectedArea.value?.id
-    //       ? `/areas/${selectedArea.value.id}`
-    //       : '/areas';
-    //     const method = editing.value && selectedArea.value?.id ? 'put' : 'post';
-    //
-    //     await api({ method, url, data: areaData });
-    //
-    //     showFeedback(
-    //       editing.value ? 'Área atualizada com sucesso!' : 'Área cadastrada com sucesso!',
-    //       'success'
-    //     );
-    //
-    //     closeModal();
-    //     loadAreas();
-    //   } catch (error) {
-    //     handleApiError(error as AxiosError);
-    //   } finally {
-    //     saving.value = false;
-    //   }
-    // }
-
-    async function saveArea(areaData: Area) {
-      closeModal();
-
-      // Remove o start() do drawer e usa apenas o progresso real
-      uploadDrawer.value.show = true; // Apenas abre o drawer
-
+    async function saveArea(areaData: any) {
+      saving.value = true;
       try {
-        const url = editing.value ? `/areas/${selectedArea.value?.id}` : '/areas';
+        const url = editing.value && selectedArea.value?.id 
+          ? `/areas/${selectedArea.value.id}` 
+          : '/areas';
+        const method = editing.value && selectedArea.value?.id ? 'put' : 'post';
 
-        await api({
-          method: editing.value ? 'put' : 'post',
-          url,
-          data: areaData,
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / (progressEvent.total || 1)
-            );
-            uploadDrawer.value.progress = percentCompleted;
-          }
-        });
+        await api({ method, url, data: areaData });
 
-        uploadDrawer.value.status = 'success';
-        showFeedback('Salvo com sucesso!', 'success');
+        showFeedback(
+          editing.value ? 'Área atualizada com sucesso!' : 'Área cadastrada com sucesso!',
+          'success'
+        );
+
+        closeModal();
         loadAreas();
       } catch (error) {
-        uploadDrawer.value.status = 'error';
-        showFeedback('Erro ao salvar', 'error');
+        handleApiError(error as AxiosError);
       } finally {
-        setTimeout(() => uploadDrawer.value.close(), 2000);
+        saving.value = false;
       }
     }
 
@@ -258,7 +209,7 @@ export default defineComponent({
 
     function handleApiError(error: AxiosError) {
       if (error.response) {
-        const message = error.response.data?.message ||
+        const message = error.response.data?.message || 
                        `Erro ${error.response.status}: ${error.response.statusText}`;
         showFeedback(message, 'error');
       } else {
@@ -299,8 +250,7 @@ export default defineComponent({
       closeModal,
       confirmDelete,
       saveArea,
-      deleteArea,
-      uploadDrawer
+      deleteArea
     };
   }
 });
