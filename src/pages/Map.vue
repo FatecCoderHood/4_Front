@@ -67,6 +67,12 @@
       :weedsData="weedsDataForSelectedArea"
     />
 
+    <TiffProcessor 
+      v-if="map && selectedArea"
+      :map="map"
+      :area-id="selectedArea.id"
+    />
+
     <div v-if="showTalhoesModal" class="talhoes-overlay">
       <div class="talhoes-container">
         <div class="talhoes-header">
@@ -108,6 +114,7 @@ import GeoJSONLayer from '@/components/Map/GeoJSONLayer.vue';
 import StatusActions from '@/components/Map/StatusActions.vue';
 import WeedsOverlay from '@/components/Map/WeedsOverlay.vue';
 import type { WeedFeature, Talhao } from '@/types/weeds';
+import TiffProcessor from '@/components/Map/TiffProcessor.vue';
 
 interface Farm {
   id: number;
@@ -125,7 +132,8 @@ export default defineComponent({
     MapControls,
     GeoJSONLayer,
     StatusActions,
-    WeedsOverlay
+    WeedsOverlay,
+    TiffProcessor
   },
 
   data() {

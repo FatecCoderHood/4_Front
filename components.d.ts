@@ -16,6 +16,7 @@ declare module 'vue' {
     FarmList: typeof import('./src/components/Farms/FarmList.vue')['default']
     FarmsMenu: typeof import('./src/components/Map/FarmsMenu.vue')['default']
     FarmTableActions: typeof import('./src/components/Farms/FarmTableActions.vue')['default']
+    FarmUploadTiff: typeof import('./src/components/Farms/FarmUploadTiff.vue')['default']
     FarmViewDialog: typeof import('./src/components/Farms/FarmViewDialog.vue')['default']
     GeoJSONLayer: typeof import('./src/components/Map/GeoJSONLayer.vue')['default']
     GeoJsonProcessor: typeof import('./src/components/Farms/GeoJsonProcessor.vue')['default']
@@ -27,6 +28,12 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SideBar: typeof import('./src/components/SideBar.vue')['default']
     StatusActions: typeof import('./src/components/Map/StatusActions.vue')['default']
+    StepperFooter: typeof import('./src/components/Farms/StepperFooter.vue')['default']
+    TiffProcessor: typeof import('./src/components/Map/TiffProcessor.vue')['default']
+    UserDeleteDialog: typeof import('./src/components/Users/UserDeleteDialog.vue')['default']
+    UserForm: typeof import('./src/components/Users/UserForm.vue')['default']
+    UserList: typeof import('./src/components/Users/UserList.vue')['default']
+    UserTableActions: typeof import('./src/components/Users/UserTableActions.vue')['default']
     WeedsOverlay: typeof import('./src/components/Map/WeedsOverlay.vue')['default']
   }
 }
