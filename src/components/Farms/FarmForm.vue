@@ -42,7 +42,6 @@
                           :required="false"
                           @processed="onWeedsGeoJsonProcessed"
                         />
-
                       </v-col>
                       
                       <div class=vertical-divider>
@@ -123,6 +122,7 @@
               <FarmSummary 
                 :farm="farm"
                 :items="plotsWithProductivity"
+                :tiffFile="tiffFile"
                 :weedsGeoJsonFile="weedsGeoJsonFile"
                 :viewPlotHeaders="viewPlotHeaders"
                 @update-productivity="updateProductivity"
@@ -178,6 +178,7 @@
       const weedsGeoJsonData = ref<any>(null);
       const saving = ref(false);
       const productivityMap = ref<Record<string, number>>({});
+      const tiffFile = ref<File | null>(null);
   
       const farm = ref<Farm>({
         nome: '',
@@ -335,6 +336,8 @@
         viewPlotHeaders,
         farm,
         StepperFooter,
+        tiffFile,
+        uploadTiff,
         close,
         onGeoJsonProcessed,
         onWeedsGeoJsonProcessed,

@@ -1,22 +1,26 @@
 <template>
   <v-card class="donut-card">
-  <div class="select-wrapper">
-    <v-select
-      v-model="selectedFarmId"
-      :items="farmOptions"
-      item-title="nome"
-      item-value="id"
-      variant="outlined"
-      density="compact"
-      hide-details
-      label="Selecione a Fazenda"
-      @change="updateChartData"
-      class="select-farm"
-    />
-  </div>
+    <div class="select-wrapper">
+      <v-select
+        v-model="selectedFarmId"
+        :items="farmOptions"
+        item-title="nome"
+        item-value="id"
+        variant="outlined"
+        density="compact"
+        hide-details
+        label="Selecione a Fazenda"
+        class="select-farm"
+        @change="updateChartData"
+      />
+    </div>
 
     <div class="chart-container">
-      <Doughnut v-if="chartData" :data="chartData" :options="chartOptions" />
+      <Doughnut 
+        v-if="chartData" 
+        :data="chartData" 
+        :options="chartOptions" 
+      />
     </div>
   </v-card>
 </template>
@@ -31,23 +35,27 @@ import {
   Legend,
   ArcElement,
   type ChartOptions,
+  type ChartData,
 } from 'chart.js';
 import api from '@/utils/api'; // Importar a instância configurada do axios
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement);
+
+import type { Farm } from '@/types/farms';
 
 export default defineComponent({
   name: 'DonutChart',
   components: { Doughnut },
   props: {
     farms: {
-      type: Array,
+      type: Array as () => Farm[],
       required: true
     }
   },
-  setup(props) {
+  emits: ['farm-changed'],
+  setup(props, { emit }) {
     const selectedFarmId = ref('');
-    const chartData = ref(null);
+    const chartData = ref<ChartData<'doughnut'> | null>(null);
 
     const chartOptions: ChartOptions<'doughnut'> = {
       responsive: true,
@@ -68,7 +76,7 @@ export default defineComponent({
     };
 
     const farmOptions = computed(() =>
-      props.farms.map((farm: any) => ({
+      props.farms.map((farm: Farm) => ({
         id: farm.id,
         nome: farm.nome
       }))
@@ -82,7 +90,10 @@ export default defineComponent({
     };
 
     async function updateChartData() {
-      let farm = props.farms.find((f: any) => f.id === selectedFarmId.value);
+      // Emitir o evento para o componente pai
+      emit('farm-changed', selectedFarmId.value);
+      
+      let farm: Farm | undefined = props.farms.find((f: Farm) => f.id === selectedFarmId.value);
 
       try {
         const response = await api.get(`/areas/${selectedFarmId.value}`);
@@ -113,7 +124,9 @@ export default defineComponent({
       };
 
       for (const talhao of farm.talhoes) {
-        counts[talhao.status] = (counts[talhao.status] || 0) + 1;
+        if (talhao.status) {
+          counts[talhao.status] = (counts[talhao.status] || 0) + 1;
+        }
       }
 
       chartData.value = {
@@ -140,8 +153,11 @@ export default defineComponent({
     // Atualiza o gráfico se a lista de fazendas mudar
     watch(() => props.farms, () => {
       if (!selectedFarmId.value && props.farms.length > 0) {
-        selectedFarmId.value = props.farms[0].id;
-        updateChartData();
+        const firstFarm = props.farms[0];
+        if (firstFarm.id) {
+          selectedFarmId.value = firstFarm.id;
+          updateChartData();
+        }
       }
     }, { immediate: true });
 
