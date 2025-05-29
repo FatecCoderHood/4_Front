@@ -18,6 +18,8 @@
     "axios-cookiejar-support": "^6.0.2",
     "chart.js": "^4.4.9",
     "core-js": "^3.37.1",
+    "georaster": "^1.6.0",
+    "georaster-layer-for-leaflet": "^3.10.0",
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
     "leaflet-geotiff": "^0.2.0",

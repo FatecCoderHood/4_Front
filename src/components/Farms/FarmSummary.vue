@@ -9,7 +9,6 @@
                             <p class="mb-7"><strong>Localização:</strong> {{ farm.cidade }}, {{ farm.estado }}</p>
                             <p class="mb-7"><strong>Número de Talhões:</strong> {{ items.length }}</p>
                             <p class="mb-7"><strong>GeoJSON de Daninhas:</strong> {{ weedsGeoJsonFile ? 'Incluído' : 'Não incluído' }}</p>
-                            <p><strong>Imagem TIFF: </strong> {{ tiffFile ? 'Incluído' : 'Não incluído' }}</p>
                         </v-card-text>
                         </div>
                     </v-card>
@@ -58,7 +57,6 @@ export default defineComponent({
         items: { type: Array, required: true},
         weedsGeoJsonFile: { type: [File, null], default: null},
         viewPlotHeaders: { type: Array, required: true},
-        tiffFile: { type: [File, null], default: null}
     },
     emits: ['update-productivity'],
     methods: {

@@ -42,14 +42,6 @@
                           :required="false"
                           @processed="onWeedsGeoJsonProcessed"
                         />
-                        <v-file-input
-                          v-model="tiffFile"
-                          label="Upload da Imagem Tiff (Opcional)"
-                          accept=".tiff,image/tiff"
-                          outlined
-                          :required="false"
-                        />
-          
                       </v-col>
                       
                       <div class=vertical-divider>
@@ -297,20 +289,6 @@
         productivityMap.value[item.mnTl] = Number(item.productivity);
       }
     
-      async function uploadTiff(areaId: number) {
-        if(!tiffFile.value) return;
-        const formData = new FormData();
-        formData.append('file', tiffFile.value);
-        formData.append('areaId', areaId.toString());
-
-        try{
-          const response = await axios.post("http://localhost:8080/api/tiffs",formData);
-          console.log('TIFF ENVIADO!', response.data);
-        } catch (error) {
-          console.error('Erro ao enviar TIFF', error);
-        }
-      }
-  
       async function handleNext() {
         if (currentStep.value === 1) {
           if (step1Form.value) {
@@ -334,7 +312,6 @@
           geojson: geoJsonData.value,
           ervasDaninhasGeojson: weedsGeoJsonData.value, // Nome corrigido
           produtividadePorAno: productivityMap.value, // Nome corrigido
-          arquivoTiff: tiffFile.value 
         };
         emit('save', payload);
         setTimeout(() => {
