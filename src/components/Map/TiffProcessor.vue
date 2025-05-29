@@ -1,309 +1,271 @@
 <template>
-    <div class="tiff-control" ref="controlContainer">
-      <button 
-        @click="toggleTiffLayer"
-        :class="{ 'active': tiffVisible }"
-        class="tiff-button"
-        ref="tiffButton"
-      >
-        {{ tiffVisible ? 'Ocultar TIFF' : 'Mostrar TIFF' }}
-      </button>
-      <div v-if="error" class="error-message">{{ error }}</div>
-      <div class="debug-info" v-if="debugInfo">
-        <pre>{{ debugInfo }}</pre>
-      </div>
-    </div>
-  </template>
-  
-  <script lang="ts">
-  import { defineComponent } from 'vue';
-  import L from 'leaflet';
-  import 'leaflet-geotiff';
-  import 'leaflet-geotiff/leaflet-geotiff-plotty';
-  import 'geotiff';
-  
-  export default defineComponent({
-    name: 'TiffControl',
-    props: {
-      map: {
-        type: Object as () => L.Map | null,
-        required: true
-      },
-      areaId: {
-        type: Number,
-        default: null
-      }
-    },
-  
-    data() {
-      return {
-        tiffVisible: false,
-        tiffLayer: null as L.Layer | null,
-        error: null as string | null,
-        debugInfo: null as string | null,
-        logs: [] as string[],
-        currentBounds: null as L.LatLngBounds | null
-      };
-    },
-  
-    mounted() {
-      this.log('Componente montado');
-      this.log(`Mapa disponível: ${!!this.map}`);
-      this.log(`areaId: ${this.areaId}`);
-      
-      if (this.map) {
-        this.currentBounds = this.map.getBounds();
-        this.map.on('moveend', this.updateBounds);
-      }
-      
-      this.updateDebugInfo();
-    },
-  
-    watch: {
-      areaId(newVal, oldVal) {
-        this.log(`areaId alterado de ${oldVal} para ${newVal}`);
-        if (this.tiffVisible) {
-          this.loadTiff();
-        }
-      }
-    },
-  
-    methods: {
-      updateBounds() {
-        if (this.map) {
-          this.currentBounds = this.map.getBounds();
-        }
-      },
-  
-      log(message: string, data?: any) {
-        const timestamp = new Date().toISOString();
-        const logEntry = `[${timestamp}] ${message}${data ? ' - ' + JSON.stringify(data) : ''}`;
-        this.logs.push(logEntry);
-        console.log(logEntry);
-      },
-  
-      async toggleTiffLayer() {
-        this.log('toggleTiffLayer chamado');
-        this.tiffVisible = !this.tiffVisible;
-        
-        if (this.tiffVisible) {
-          await this.loadTiff();
-        } else {
-          this.removeTiffLayer();
-        }
-        
-        this.updateDebugInfo();
-      },
-  
-      async loadTiff() {
-        this.log('Iniciando loadTiff');
-        
-        if (!this.map) {
-          this.error = "Mapa não disponível";
-          this.log('Erro: Mapa não disponível');
-          this.tiffVisible = false;
-          this.updateDebugInfo();
-          return;
-        }
-  
-        if (!this.areaId) {
-          this.error = "ID da área não disponível";
-          this.log('Erro: areaId não disponível');
-          this.tiffVisible = false;
-          this.updateDebugInfo();
-          return;
-        }
-  
-        try {
-          this.removeTiffLayer();
-          this.log(`Buscando TIFFs para área ${this.areaId}`);
-  
-          const apiUrl = `http://localhost:8080/api/tiffs/area/${this.areaId}`;
-          this.log(`Fetching URL: ${apiUrl}`);
-          
-          const response = await fetch(apiUrl, {
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          this.log('Resposta da API recebida', { status: response.status });
-  
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-  
-          const tiffs = await response.json();
-          this.log('Resposta completa da API:', tiffs);
-  
-          // Correção principal: Verificamos se é um array e não está vazio
-          if (!Array.isArray(tiffs)) {
-            this.error = "Formato de resposta inesperado da API";
-            this.log('Formato de resposta inesperado', { received: tiffs });
-            this.tiffVisible = false;
-            this.updateDebugInfo();
-            return;
-          }
-  
-          if (tiffs.length === 0) {
-            this.error = "Nenhum TIFF encontrado para esta área";
-            this.log('Nenhum TIFF encontrado para a área');
-            this.tiffVisible = false;
-            this.updateDebugInfo();
-            return;
-          }
-  
-          for (const tiff of tiffs) {
-            this.log('Processando TIFF:', tiff);
-            
-            try {
-              const layer = (L as any).leafletGeotiff(tiff.url, {
-                band: 0,
-                displayMin: 0,
-                displayMax: 100,
-                name: 'Imagem',
-                colorScale: 'viridis',
-                opacity: 0.8,
-                clampLow: false,
-                clampHigh: false,
-                useWorker: false,
-                noDataValue: -9999,
-                overrideProjection: 'EPSG:4326'
-              }).addTo(this.map);
-              
-              this.tiffLayer = layer;
-              this.log('TIFF adicionado ao mapa com sucesso');
-  
-              layer.on('load', () => {
-                try {
-                  if (layer.getBounds) {
-                    const bounds = layer.getBounds();
-                    if (bounds && bounds.isValid()) {
-                      this.map.fitBounds(bounds);
-                      this.log('Mapa ajustado para os bounds do TIFF', bounds);
-                    }
-                  }
-                } catch (e) {
-                  this.log('Erro ao ajustar bounds', { error: e.message });
-                }
-              });
-  
-            } catch (err) {
-              this.log('Erro ao adicionar TIFF ao mapa', { error: err.message });
-              throw err;
-            }
-          }
-  
-          this.error = null;
-        } catch (err) {
-          this.error = "Erro ao carregar imagens TIFF";
-          this.log('Erro ao carregar TIFFs', { error: err.message });
-          this.tiffVisible = false;
-        } finally {
-          this.updateDebugInfo();
-        }
-      },
-  
-      removeTiffLayer() {
-        this.log('Removendo camada TIFF');
-        if (this.tiffLayer && this.map) {
-          try {
-            this.map.removeLayer(this.tiffLayer);
-            this.tiffLayer = null;
-            this.log('Camada TIFF removida com sucesso');
-          } catch (err) {
-            this.log('Erro ao remover camada TIFF', { error: err.message });
-          }
-        }
-        this.updateDebugInfo();
-      },
-  
-      updateDebugInfo() {
-        this.debugInfo = [
-          `Status: ${this.tiffVisible ? 'Ativo' : 'Inativo'}`,
-          `Erro: ${this.error || 'Nenhum'}`,
-          `Camada TIFF: ${this.tiffLayer ? 'Presente' : 'Ausente'}`,
-          `Mapa: ${this.map ? 'Disponível' : 'Indisponível'}`,
-          `areaId: ${this.areaId || 'Nenhum'}`,
-          `Bounds Atuais: ${this.currentBounds ? this.currentBounds.toString() : 'Nenhum'}`,
-          '--- Logs ---',
-          ...this.logs.slice(-10)
-        ].join('\n');
-      }
-    },
-  
-    beforeUnmount() {
-      this.log('Componente será desmontado');
-      if (this.map) {
-        this.map.off('moveend', this.updateBounds);
-      }
-      this.removeTiffLayer();
+  <div class="tiff-control">
+    <button
+      class="map-button"
+      :class="{ 'active': isTiffActive }"
+      @click="toggleTiff"
+    >
+      <i class="icon-tiff"></i>
+    </button>
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { ref, watch, PropType } from 'vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import parseGeoraster from "georaster";
+import GeoRasterLayer from 'georaster-layer-for-leaflet';
+
+const props = defineProps({
+  map: {
+    type: Object as PropType<L.Map | null>,
+    required: true
+  },
+  areaId: {
+    type: Number,
+    required: true
+  }
+});
+
+const tiffLayer = ref<GeoRasterLayer | null>(null);
+const error = ref<string | null>(null);
+const logs = ref<string[]>([]);
+const isTiffActive = ref(false);
+const tiffCache = new Map<number, GeoRasterLayer>();
+
+function log(message: string) {
+  const timestamp = new Date().toISOString().slice(11, 19);
+  const logMessage = `[${timestamp}] ${message}`;
+  console.log(logMessage);
+  logs.value.push(logMessage);
+  if (logs.value.length > 20) logs.value.shift();
+}
+
+function removeTiffLayer() {
+  if (tiffLayer.value && props.map) {
+    props.map.removeLayer(tiffLayer.value);
+    log(`Layer TIFF removida do mapa para areaId ${props.areaId}`);
+    tiffLayer.value = null;
+  }
+}
+
+async function fetchTiffUrl(areaId: number): Promise<string | null> {
+  log(`Buscando URL TIFF para areaId ${areaId}...`);
+  try {
+    const apiUrl = `http://localhost:8080/api/tiffs/area/${areaId}`;
+    const response = await fetch(apiUrl);
+    if (!response.ok) throw new Error(`Erro ao buscar URL TIFF: ${response.statusText}`);
+    const data = await response.json();
+    if (Array.isArray(data) && data.length > 0 && data[0].url) {
+      return data[0].url;
+    } else {
+      log('URL TIFF não encontrada na resposta.');
+      return null;
     }
-  });
-  </script>
-  
-  <style scoped>
-  .tiff-control {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    z-index: 1000;
-    background: white;
-    padding: 10px;
-    border-radius: 4px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
-    max-width: 300px;
+  } catch (err) {
+    log(`Erro ao buscar URL TIFF: ${(err as Error).message}`);
+    return null;
   }
-  
-  .tiff-button {
-    padding: 8px 16px;
-    background: #ffffff;
-    border: 2px solid rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
-    margin-bottom: 8px;
-    display: block;
-    width: 100%;
+}
+
+async function createGeoRasterLayer(url: string): Promise<GeoRasterLayer> {
+  log('Iniciando download e processamento do GeoTIFF...');
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Erro ao baixar TIFF: ${response.statusText}`);
+    const arrayBuffer = await response.arrayBuffer();
+    const georaster = await parseGeoraster(arrayBuffer);
+    log('GeoRaster criado com sucesso');
+
+    const isMultiBand = georaster.numberOfRasters >= 3;
+
+    const pixelValuesToColorFn = isMultiBand
+      ? (values: number[]) => {
+          if (!values) return null;
+          const isNoData = values.some(
+            (val, idx) => val === georaster.noDataValue || val === -9999
+          );
+          if (isNoData) return null;
+
+          const normalize = (val: number, bandIndex: number) => {
+            const min = georaster.mins[bandIndex];
+            const max = georaster.maxs[bandIndex];
+            return Math.round(((val - min) / (max - min)) * 255);
+          };
+
+          const r = normalize(values[0], 0);
+          const g = normalize(values[1], 1);
+          const b = normalize(values[2], 2);
+
+          return `rgb(${r},${g},${b})`;
+        }
+      : (values: number[]) => {
+          const val = values[0];
+          if (
+            val === undefined ||
+            val === null ||
+            val === georaster.noDataValue ||
+            val === -9999
+          )
+            return null;
+
+          const gray = Math.round((val / georaster.maxs[0]) * 255);
+          return `rgb(${gray},${gray},${gray})`;
+        };
+
+    const layer = new GeoRasterLayer({
+      georaster,
+      opacity: 1,
+      resolution: 216,
+      pixelValuesToColorFn,
+      updateWhenZooming: false,
+      tileSize: 256,
+      chunkedLoading: true,
+      keepBuffer: 5,
+      zIndex: 1000
+    });
+
+    layer.on('load', () => {
+      log('TIFF renderizado no mapa com sucesso!');
+      if (props.map) {
+        props.map.invalidateSize();
+        layer.bringToFront();
+      }
+    });
+
+    return layer;
+  } catch (err) {
+    log(`Erro no processamento do TIFF: ${(err as Error).message}`);
+    throw err;
   }
-  
-  .tiff-button:hover {
-    background: #f5f5f5;
+}
+
+async function activateTiffLayer(areaId: number) {
+  if (!props.map) {
+    log('Mapa não disponível');
+    return;
   }
-  
-  .tiff-button.active {
-    background: #4caf50;
-    color: white;
+
+  if (tiffCache.has(areaId)) {
+    log(`Usando TIFF em cache para areaId ${areaId}`);
+    const cachedLayer = tiffCache.get(areaId)!;
+    cachedLayer.addTo(props.map);
+    tiffLayer.value = cachedLayer;
+    fitLayerToMap(cachedLayer);
+    return;
   }
-  
-  .error-message {
-    color: #d32f2f;
-    font-size: 12px;
-    margin: 8px 0;
-    padding: 4px;
-    border: 1px solid #ffcdd2;
-    border-radius: 4px;
-    background-color: #ffebee;
+
+  const url = await fetchTiffUrl(areaId);
+  if (!url) {
+    error.value = 'URL TIFF não encontrada ou erro ao buscar.';
+    return;
   }
-  
-  .debug-info {
-    font-family: monospace;
-    font-size: 10px;
-    background: #f5f5f5;
-    padding: 8px;
-    border-radius: 4px;
-    max-height: 200px;
-    overflow-y: auto;
-    margin-top: 8px;
-    white-space: pre-wrap;
-    word-break: break-all;
+
+  try {
+    const layer = await createGeoRasterLayer(url);
+    layer.addTo(props.map);
+    tiffLayer.value = layer;
+    tiffCache.set(areaId, layer);
+    fitLayerToMap(layer);
+  } catch (err) {
+    error.value = (err as Error).message || 'Erro desconhecido ao processar TIFF.';
   }
-  
-  /* Estilo para debug da camada TIFF */
-  :deep(.leaflet-geotiff-layer) {
-    border: 2px solid rgba(255, 0, 0, 0.5) !important;
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3) !important;
+}
+
+function fitLayerToMap(layer: GeoRasterLayer) {
+  if (props.map && layer.getBounds() && layer.getBounds().isValid()) {
+    props.map.fitBounds(layer.getBounds());
+  } else if (props.map) {
+    props.map.setView([-15, -55], 5);
   }
-  </style>
+}
+
+async function toggleTiff() {
+  if (isTiffActive.value) {
+    removeTiffLayer();
+    isTiffActive.value = false;
+  } else {
+    await activateTiffLayer(props.areaId);
+    isTiffActive.value = true;
+  }
+}
+
+watch(() => props.areaId, async (newAreaId, oldAreaId) => {
+  if (!props.map) return;
+
+  log(`AreaId mudou de ${oldAreaId} para ${newAreaId}`);
+  if (tiffLayer.value) {
+    removeTiffLayer();
+  }
+
+  if (isTiffActive.value) {
+    await activateTiffLayer(newAreaId);
+  }
+});
+</script>
+
+<style scoped>
+.map-button {
+  position: absolute;
+  top: 10px;
+  right: 55px;
+  width: 40px;
+  height: 40px;
+  z-index: 1500;
+  border-radius: 50%;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.map-button:hover {
+  background-color: #e9ecef;
+}
+
+.map-button.active {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.map-button i {
+  font-size: 18px;
+}
+
+.icon-tiff {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%23000" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM8 16h8v2H8v-2zm0-4h8v2H8v-2z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.log-container {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  max-height: 150px;
+  width: 300px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+.error-message {
+  position: absolute;
+  bottom: 170px;
+  left: 10px;
+  color: red;
+  font-size: 13px;
+  z-index: 1000;
+}
+</style>
