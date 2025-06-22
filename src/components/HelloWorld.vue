@@ -4,8 +4,8 @@
       <v-container class="fill-height" fluid>
         <v-row align="center" justify="center">
           <v-col cols="12" md="8" class="text-center">
-            <h1 class="text-h3 font-weight-bold text-white">Gestão de Fazendas Inteligente</h1>
-            <p class="text-subtitle-1 text-white mt-4">
+            <h1 class="text-h3 font-weight-bold text-white" style="color: white;">Gestão de Fazendas Inteligente</h1>
+            <p class="text-subtitle-1 text-white mt-4" style="color: white;">
               Monitore sua produção com tecnologia de ponta e imagens de satélite.
             </p>
           </v-col>
@@ -21,7 +21,7 @@
 </template>
 
 <script setup Lang = ts>
-import bgGif from '@/assets/7Kbp.gif';
+import bgGif from '@/assets/fundofazenda.jpg';
 
 
 </script>

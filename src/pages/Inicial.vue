@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex justify-center align-center" style="height: 100vh; background-color: #1F272F;">
+  <div class="d-flex justify-center align-center" style="height: 100vh; background-color: white;">
     <Login />
   </div>
 </template>
